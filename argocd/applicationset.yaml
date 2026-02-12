@@ -1,0 +1,76 @@
+---
+# ApplicationSet for deploying Couchbase across multiple environments
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: couchbase-environments
+  namespace: argocd
+spec:
+  generators:
+    - list:
+        elements:
+          - environment: dev
+            namespace: couchbase-dev
+            clusterSize: 1
+            dataMemory: 1Gi
+            indexMemory: 512Mi
+            replicaCount: 1
+            storageSize: 20Gi
+            autoSync: true
+          - environment: staging
+            namespace: couchbase-staging
+            clusterSize: 2
+            dataMemory: 2Gi
+            indexMemory: 1Gi
+            replicaCount: 1
+            storageSize: 30Gi
+            autoSync: true
+          - environment: prod
+            namespace: couchbase-prod
+            clusterSize: 3
+            dataMemory: 4Gi
+            indexMemory: 2Gi
+            replicaCount: 2
+            storageSize: 50Gi
+            autoSync: false
+  template:
+    metadata:
+      name: 'couchbase-{{environment}}'
+      labels:
+        environment: '{{environment}}'
+    spec:
+      project: default
+      source:
+        repoURL: https://github.com/your-org/couchbase-performance.git
+        targetRevision: HEAD
+        path: argocd/manifests/cluster
+        helm:
+          parameters:
+            - name: namespace
+              value: '{{namespace}}'
+            - name: cluster.size
+              value: '{{clusterSize}}'
+            - name: cluster.dataServiceMemoryQuota
+              value: '{{dataMemory}}'
+            - name: cluster.indexServiceMemoryQuota
+              value: '{{indexMemory}}'
+            - name: buckets.replicas
+              value: '{{replicaCount}}'
+            - name: storage.size
+              value: '{{storageSize}}'
+      destination:
+        server: https://kubernetes.default.svc
+        namespace: '{{namespace}}'
+      syncPolicy:
+        automated:
+          prune: '{{autoSync}}'
+          selfHeal: '{{autoSync}}'
+        syncOptions:
+          - CreateNamespace=true
+          - ServerSideApply=true
+        retry:
+          limit: 5
+          backoff:
+            duration: 5s
+            factor: 2
+            maxDuration: 3m

@@ -1,0 +1,130 @@
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: cb-admin-auth
+  namespace: couchbase
+type: Opaque
+stringData:
+  username: Administrator
+  password: P@ssw0rd123!
+---
+apiVersion: couchbase.com/v2
+kind: CouchbaseCluster
+metadata:
+  name: couchbase-cluster
+  namespace: couchbase
+spec:
+  image: couchbase/server:7.6.8
+  antiAffinity: true
+  
+  security:
+    adminSecret: cb-admin-auth
+    rbac:
+      managed: true
+    
+  networking:
+    exposeAdminConsole: true
+    adminConsoleServices:
+      - data
+    adminConsoleServiceType: NodePort
+    exposedFeatures:
+      - client
+      - xdcr
+    exposedFeatureServiceType: NodePort
+  
+  monitoring:
+    prometheus:
+      enabled: true
+      image: couchbase/exporter:1.0.8
+      resources:
+        requests:
+          cpu: 100m
+          memory: 128Mi
+        limits:
+          cpu: 500m
+          memory: 512Mi
+  
+  cluster:
+    dataServiceMemoryQuota: 2Gi
+    indexServiceMemoryQuota: 1Gi
+    searchServiceMemoryQuota: 1Gi
+    eventingServiceMemoryQuota: 1Gi
+    analyticsServiceMemoryQuota: 1Gi
+    indexStorageSetting: plasma
+    indexer:
+      storageMode: plasma
+    autoCompaction:
+      databaseFragmentationThreshold:
+        percent: 30
+      viewFragmentationThreshold:
+        percent: 30
+      tombstonePurgeInterval: 72h
+    autoFailoverTimeout: 10s
+    autoFailoverMaxCount: 3
+    autoFailoverOnDataDiskIssues: true
+    autoFailoverOnDataDiskIssuesTimePeriod: 120s
+    autoFailoverServerGroup: false
+  
+  buckets:
+    managed: true
+  
+  servers:
+    - name: data
+      size: 3
+      services:
+        - data
+        - index
+        - query
+      volumeMounts:
+        logs: couchbase
+      pod:
+        spec:
+          containers:
+            - name: couchbase
+              resources:
+                requests:
+                  cpu: 2
+                  memory: 4Gi
+                limits:
+                  cpu: 4
+                  memory: 8Gi
+      volumeClaimTemplates:
+        - metadata:
+            name: couchbase
+          spec:
+            storageClassName: "ocs-storagecluster-ceph-rbd"
+            accessModes:
+              - ReadWriteOnce
+            resources:
+              requests:
+                storage: 50Gi
+    
+    - name: analytics
+      size: 2
+      services:
+        - analytics
+        - eventing
+      volumeMounts:
+        logs: couchbase
+      pod:
+        spec:
+          containers:
+            - name: couchbase
+              resources:
+                requests:
+                  cpu: 1
+                  memory: 2Gi
+                limits:
+                  cpu: 2
+                  memory: 4Gi
+      volumeClaimTemplates:
+        - metadata:
+            name: couchbase
+          spec:
+            storageClassName: "ocs-storagecluster-ceph-rbd"
+            accessModes:
+              - ReadWriteOnce
+            resources:
+              requests:
+                storage: 30Gi

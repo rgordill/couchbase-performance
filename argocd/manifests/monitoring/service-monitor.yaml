@@ -1,0 +1,58 @@
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: couchbase-cluster
+  namespace: couchbase
+  labels:
+    app: couchbase
+    couchbase_cluster: couchbase-cluster
+spec:
+  selector:
+    matchLabels:
+      app: couchbase
+      couchbase_cluster: couchbase-cluster
+  endpoints:
+    - port: metrics
+      interval: 30s
+      path: /metrics
+      scheme: http
+      scrapeTimeout: 25s
+      relabelings:
+        - sourceLabels: [__meta_kubernetes_pod_name]
+          targetLabel: pod
+        - sourceLabels: [__meta_kubernetes_pod_node_name]
+          targetLabel: node
+        - sourceLabels: [__meta_kubernetes_namespace]
+          targetLabel: namespace
+        - sourceLabels: [__meta_kubernetes_pod_label_couchbase_cluster]
+          targetLabel: cluster
+        - sourceLabels: [__meta_kubernetes_pod_label_couchbase_server]
+          targetLabel: server_group
+      metricRelabelings:
+        - sourceLabels: [__name__]
+          regex: 'couchbase_.*'
+          action: keep
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: couchbase-operator
+  namespace: couchbase-operator
+  labels:
+    app: couchbase-operator
+spec:
+  selector:
+    matchLabels:
+      app: couchbase-operator
+  endpoints:
+    - port: metrics
+      interval: 30s
+      path: /metrics
+      scheme: http
+      scrapeTimeout: 25s
+      relabelings:
+        - sourceLabels: [__meta_kubernetes_pod_name]
+          targetLabel: pod
+        - sourceLabels: [__meta_kubernetes_namespace]
+          targetLabel: namespace

@@ -1,0 +1,611 @@
+---
+description: Couchbase Autonomous Operator deployment best practices and version compatibility
+globs:
+  - "**/couchbase*.yaml"
+  - "**/manifests/cluster/**"
+  - "**/manifests/operator/**"
+alwaysApply: false
+---
+
+# Couchbase Autonomous Operator Best Practices
+
+**References:**
+- Prerequisites and compatibility: https://docs.couchbase.com/operator/current/prerequisite-and-setup.html
+- Install on OpenShift (CRD, DAC, operator, permissions): https://docs.couchbase.com/operator/current/install-openshift.html
+
+## Version Compatibility Requirements
+
+### Supported Versions
+
+| Component | Minimum Version | Recommended Version | Notes |
+|-----------|----------------|---------------------|-------|
+| **Couchbase Operator** | 2.8.0 | 2.9.0+ | Use latest stable release |
+| **Couchbase Server** | 7.2.0 | 7.6.x or 8.0.x | Enterprise Edition required |
+| **Kubernetes** | 1.31.0 | 1.33.0+ | Must be 1.33+ for this project |
+| **OpenShift** | 4.18 | 4.20+ | Must be 4.20+ for this project |
+| **Operator Backup Image** | 1.5.0 | 1.5.0+ | For backup/restore functionality |
+| **Fluent Bit** | 1.2.0 | 1.3.0 | For log forwarding |
+
+### ✅ REQUIRED: Version Specifications
+
+Always specify exact versions in manifests to ensure compatibility:
+
+```yaml
+# ✅ GOOD - Specify exact versions
+apiVersion: couchbase.com/v2
+kind: CouchbaseCluster
+metadata:
+  name: couchbase-cluster
+spec:
+  image: couchbase/server:7.6.8  # Specific version
+  
+  monitoring:
+    prometheus:
+      enabled: true
+      image: couchbase/exporter:1.0.8  # Specific version
+```
+
+```yaml
+# ❌ BAD - Using 'latest' tag
+spec:
+  image: couchbase/server:latest  # Don't use latest
+```
+
+### Couchbase Server Version Matrix
+
+| Server Version | Operator Support | Features | Status |
+|---------------|------------------|----------|--------|
+| 8.0.x | 2.9.0+ | All new 8.0 features | ✅ Recommended |
+| 7.6.x | 2.8.0+ | Full feature support | ✅ Supported |
+| 7.2.x | 2.6.0+ | Legacy support | ⚠️ Compatible |
+
+**Important Notes:**
+- Couchbase Server 8.0 requires Operator 2.9.0+ for new features
+- For optimal performance with vector search, use nodes with AVX2 CPU instructions (x86-64-v3)
+- Server 7.2-8.0 supported with current operator versions
+
+### Platform Compatibility
+
+```yaml
+# ✅ GOOD - Platform-aware deployment annotations
+apiVersion: couchbase.com/v2
+kind: CouchbaseCluster
+metadata:
+  name: couchbase-cluster
+  annotations:
+    # Document minimum requirements
+    kubernetes.io/minimum-version: "1.33.0"
+    openshift.io/minimum-version: "4.20"
+    couchbase.com/operator-version: "2.9.0"
+spec:
+  image: couchbase/server:7.6.8
+```
+
+## Architecture Requirements
+
+### CPU Architecture
+
+```yaml
+# ✅ GOOD - Single architecture per cluster
+apiVersion: v1
+kind: Pod
+metadata:
+  name: couchbase-pod
+spec:
+  nodeSelector:
+    kubernetes.io/arch: amd64  # or arm64, but consistent across cluster
+  containers:
+    - name: couchbase
+      image: couchbase/server:7.6.8
+```
+
+**Requirements:**
+- ✅ Uniform architecture across all nodes
+- ✅ AMD64 (x86_64) or ARM64 supported
+- ❌ Mixed architecture clusters NOT supported
+
+### AVX2 Support (Recommended for 8.0+)
+
+```yaml
+# ✅ EXCELLENT - AVX2-aware scheduling for performance
+apiVersion: v1
+kind: Pod
+metadata:
+  name: couchbase-server
+spec:
+  nodeSelector:
+    kubernetes.io/arch: amd64
+    # Schedule on AVX2-capable nodes for vector search performance
+    feature.node.kubernetes.io/cpu-cpuid.AVX2: "true"
+  containers:
+    - name: couchbase-server
+      image: couchbase/server:8.0.0
+```
+
+**AVX2 Benefits:**
+- Optimal performance for vector search (FTS and GSI)
+- Required for Couchbase Server 8.0+ optimal performance
+- See: https://docs.couchbase.com/operator/current/tutorial-avx2-scheduling.html
+
+## Resource Requirements
+
+### Minimum Resource Allocations
+
+```yaml
+# ✅ GOOD - Production resource allocations
+apiVersion: couchbase.com/v2
+kind: CouchbaseCluster
+metadata:
+  name: couchbase-cluster
+spec:
+  servers:
+    - name: data-nodes
+      size: 3
+      services:
+        - data
+        - index
+        - query
+      pod:
+        spec:
+          containers:
+            - name: couchbase
+              resources:
+                requests:
+                  cpu: "2"        # Minimum 2 CPUs per pod
+                  memory: "4Gi"   # Calculate based on services
+                limits:
+                  cpu: "4"
+                  memory: "8Gi"
+```
+
+### Memory Calculation by Service
+
+Base memory requirements per service (per pod):
+- **Data Service**: 512Mi base + configured bucket memory
+- **Index Service**: 512Mi base
+- **Search Service**: 512Mi base
+- **Eventing Service**: 512Mi base
+- **Analytics Service**: 1Gi base
+- **Overhead**: +25% on top of total
+
+**Example Calculation:**
+```
+All services enabled = 512Mi + 512Mi + 512Mi + 512Mi + 1Gi = 3Gi
+With 25% overhead = 3Gi × 1.25 = 3.75Gi minimum
+```
+
+```yaml
+# ✅ GOOD - Calculated memory for all services
+spec:
+  servers:
+    - name: all-services
+      services: [data, index, query, search, analytics, eventing]
+      pod:
+        spec:
+          containers:
+            - name: couchbase
+              resources:
+                requests:
+                  memory: "4Gi"  # 3.75Gi rounded up
+                limits:
+                  memory: "8Gi"
+```
+
+## Backup and Restore
+
+### Backup Image Compatibility
+
+```yaml
+# ✅ GOOD - Specify compatible backup image
+apiVersion: couchbase.com/v2
+kind: CouchbaseBackup
+metadata:
+  name: couchbase-backup
+spec:
+  image: couchbase/operator-backup:1.5.0  # Use exact version
+  strategy: full_incremental
+  backupRetention: 720h  # 30 days
+```
+
+**Compatibility Matrix:**
+- `operator-backup:1.5.0` → Uses `cbbackupmgr 7.6.8`
+- Supports backup/restore for Couchbase Server 7.2+
+- Compatible with Operator 2.8.0+
+
+### ❌ AVOID: Outdated Backup Images
+
+```yaml
+# ❌ BAD - Using old backup image
+spec:
+  image: couchbase/operator-backup:1.3.0  # Outdated
+```
+
+## Monitoring and Logging
+
+### Prometheus Exporter
+
+```yaml
+# ✅ GOOD - Monitoring configuration
+apiVersion: couchbase.com/v2
+kind: CouchbaseCluster
+metadata:
+  name: couchbase-cluster
+spec:
+  monitoring:
+    prometheus:
+      enabled: true
+      image: couchbase/exporter:1.0.8  # Specify version
+      resources:
+        requests:
+          cpu: 100m
+          memory: 128Mi
+        limits:
+          cpu: 500m
+          memory: 512Mi
+```
+
+### Fluent Bit Logging
+
+```yaml
+# ✅ GOOD - Log forwarding configuration
+apiVersion: couchbase.com/v2
+kind: CouchbaseCluster
+metadata:
+  name: couchbase-cluster
+spec:
+  logging:
+    server:
+      enabled: true
+    audit:
+      enabled: true
+      rotation:
+        size: 20Mi
+        interval: 15m
+    logRetentionTime: 168h  # 7 days
+    logRetentionCount: 20
+```
+
+**Fluent Bit Compatibility:**
+- Operator 2.9.0 supports Fluent Bit 1.2.0 - 1.3.0
+- Use version 1.3.0 for latest features
+
+## Storage Requirements
+
+### Persistent Volume Requirements
+
+```yaml
+# ✅ GOOD - Production storage configuration
+apiVersion: couchbase.com/v2
+kind: CouchbaseCluster
+metadata:
+  name: couchbase-cluster
+spec:
+  servers:
+    - name: data
+      volumeClaimTemplates:
+        - metadata:
+            name: couchbase
+          spec:
+            storageClassName: "fast-ssd"  # CSI-compliant storage
+            accessModes:
+              - ReadWriteOnce
+            resources:
+              requests:
+                storage: 100Gi
+```
+
+**Storage Requirements:**
+- ✅ CSI-compliant storage driver required
+- ✅ Persistent volumes mandatory for production
+- ✅ Use fast storage (SSD/NVMe) for best performance
+- ❌ Do NOT use hostPath for production
+
+### Supported Storage Providers
+
+**Kubernetes:**
+- AWS EBS CSI
+- Google Persistent Disk CSI
+- Azure Disk CSI
+- Ceph RBD
+- Any CSI-compliant driver
+
+**OpenShift:**
+- OpenShift Data Foundation (ODF/OCS)
+- AWS EBS (on AWS)
+- Azure Disk (on Azure)
+- GCP Persistent Disk (on GCP)
+
+## Managed Kubernetes Compatibility
+
+### Supported Managed Services
+
+```yaml
+# ✅ GOOD - Platform-specific annotations
+apiVersion: couchbase.com/v2
+kind: CouchbaseCluster
+metadata:
+  name: couchbase-cluster
+  annotations:
+    # Document managed platform
+    platform: "eks"  # or gke, aks, k3s, bottlerocket
+spec:
+  image: couchbase/server:7.6.8
+```
+
+**Validated Platforms:**
+- ✅ Amazon EKS
+- ✅ Google GKE
+- ✅ Microsoft AKS
+- ✅ K3s
+- ✅ Bottlerocket OS
+
+## Upgrade Paths
+
+### Operator Upgrades
+
+```yaml
+# ✅ GOOD - Document upgrade path
+apiVersion: operators.coreos.com/v1alpha1
+kind: Subscription
+metadata:
+  name: couchbase-enterprise-certified
+  annotations:
+    # Document current and target versions
+    current-version: "2.8.1"
+    target-version: "2.9.0"
+    upgrade-path: "2.8.1 → 2.9.0"
+spec:
+  channel: stable
+  name: couchbase-enterprise-certified
+  source: certified-operators
+  sourceNamespace: openshift-marketplace
+  installPlanApproval: Manual  # Use Manual for production
+```
+
+**Upgrade Best Practices:**
+1. Review release notes before upgrading
+2. Test upgrades in non-production first
+3. Use `installPlanApproval: Manual` for production
+4. Verify compatibility matrix before upgrading
+5. Backup cluster before major upgrades
+
+### Server Upgrades
+
+```yaml
+# ✅ GOOD - Rolling upgrade strategy
+apiVersion: couchbase.com/v2
+kind: CouchbaseCluster
+metadata:
+  name: couchbase-cluster
+spec:
+  image: couchbase/server:7.6.8  # From 7.2.x
+  upgradeStrategy: RollingUpgrade
+  autoResourceAllocation:
+    enabled: true
+```
+
+**Server Upgrade Paths:**
+- 7.2.x → 7.6.x → 8.0.x (recommended)
+- 7.2.x → 8.0.x (direct upgrade possible)
+- Always check operator compatibility first
+
+## RBAC Requirements
+
+### Operator Service Account
+
+```yaml
+# ✅ GOOD - Minimal RBAC for operator
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: couchbase-operator
+  namespace: couchbase-operator
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: couchbase-operator
+rules:
+  - apiGroups: ["couchbase.com"]
+    resources: ["*"]
+    verbs: ["*"]
+  - apiGroups: [""]
+    resources: ["pods", "services", "endpoints", "persistentvolumeclaims"]
+    verbs: ["get", "list", "watch", "create", "update", "delete"]
+  - apiGroups: ["apps"]
+    resources: ["deployments", "statefulsets"]
+    verbs: ["get", "list", "watch", "create", "update", "delete"]
+```
+
+### OpenShift Security Context Constraints
+
+```yaml
+# ✅ GOOD - SCC for OpenShift (if required)
+apiVersion: security.openshift.io/v1
+kind: SecurityContextConstraints
+metadata:
+  name: couchbase-scc
+  annotations:
+    # Only use if default restricted-v2 is insufficient
+    kubernetes.io/description: "Custom SCC for Couchbase operator"
+allowPrivilegedContainer: false
+runAsUser:
+  type: MustRunAsRange
+  uidRangeMin: 1000
+  uidRangeMax: 65535
+seLinuxContext:
+  type: MustRunAs
+fsGroup:
+  type: MustRunAs
+```
+
+**Note:** Most deployments should work with standard `restricted-v2` SCC on OpenShift.
+
+## Networking Requirements
+
+### Service Types
+
+```yaml
+# ✅ GOOD - Expose services appropriately
+apiVersion: couchbase.com/v2
+kind: CouchbaseCluster
+metadata:
+  name: couchbase-cluster
+spec:
+  networking:
+    exposeAdminConsole: true
+    adminConsoleServices: [data]
+    adminConsoleServiceType: ClusterIP  # Use ClusterIP, expose via Ingress
+    
+    exposedFeatures:
+      - client
+      - xdcr
+    exposedFeatureServiceType: ClusterIP
+```
+
+**Service Type Recommendations:**
+- ✅ `ClusterIP`: Default, expose via Ingress/Route
+- ⚠️ `NodePort`: Only if Ingress unavailable
+- ❌ `LoadBalancer`: Avoid, use Ingress instead
+
+### Network Policies
+
+```yaml
+# ✅ GOOD - Secure network policies
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: couchbase-cluster
+  namespace: couchbase
+spec:
+  podSelector:
+    matchLabels:
+      app: couchbase
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    - from:
+        - podSelector: {}  # Same namespace
+      ports:
+        - port: 8091  # Admin
+        - port: 11210 # Data
+        - port: 9102  # Metrics
+```
+
+## Validation and Testing
+
+### Pre-deployment Checklist
+
+Before deploying, verify:
+
+- [ ] Kubernetes version ≥ 1.33.0 (or OpenShift ≥ 4.20)
+- [ ] Couchbase Operator version ≥ 2.9.0
+- [ ] Couchbase Server version 7.6.x or 8.0.x
+- [ ] CSI-compliant storage available
+- [ ] Sufficient CPU/Memory resources
+- [ ] Network policies configured
+- [ ] RBAC permissions granted
+- [ ] Monitoring solution deployed (Prometheus)
+- [ ] Backup solution configured
+
+### Operator Self-Certification
+
+For compatible (not officially supported) platforms, run certification:
+
+```bash
+# Run operator self-certification
+kubectl apply -f https://raw.githubusercontent.com/couchbase/couchbase-operator/master/test/certification/certification.yaml
+
+# Check results
+kubectl logs -n couchbase-operator certification-job
+```
+
+## OpenShift installation (OLM vs manual)
+
+When installing on OpenShift, the [official install guide](https://docs.couchbase.com/operator/current/install-openshift.html) describes:
+
+1. **CRD first**: Install CRDs (`oc create -f crd.yaml`) when using the manual package.
+2. **Two components**: (a) **Dynamic Admission Controller (DAC)** – per-cluster, (b) **Operator** – per-namespace. Both require an image-pull secret for the Red Hat catalog when using the manual `cao` commands.
+3. **Marketplace/OLM**: If the operator is installed via OperatorHub/Subscription (OLM), the **DAC is not deployed** by default. Deploy it separately with `cao create admission --image-pull-secret rh-catalog` if you need it.
+4. **User permissions**: Install the provided cluster role and role bindings so users can create/update Couchbase custom resources.
+
+For GitOps/ArgoCD, the operator can be installed via **Helm** ([Helm setup guide](https://docs.couchbase.com/operator/current/helm-setup-guide.html)) or via OLM (Subscription). This project uses Helm; CRDs and the admission controller come from the Helm chart. Document image-pull secret (e.g. rh-catalog for registry.connect.redhat.com) when using OpenShift.
+
+## Documentation References
+
+- **Official Docs**: https://docs.couchbase.com/operator/current/
+- **Prerequisites**: https://docs.couchbase.com/operator/current/prerequisite-and-setup.html
+- **Install on OpenShift**: https://docs.couchbase.com/operator/current/install-openshift.html
+- **Best Practices**: https://docs.couchbase.com/operator/current/best-practices.html
+- **Release Notes**: https://docs.couchbase.com/operator/current/release-notes.html
+- **AVX2 Scheduling**: https://docs.couchbase.com/operator/current/tutorial-avx2-scheduling.html
+
+## Common Issues and Solutions
+
+### Issue: Pods Not Scheduling
+
+```yaml
+# ✅ SOLUTION - Check resource requests
+spec:
+  servers:
+    - name: data
+      pod:
+        spec:
+          containers:
+            - name: couchbase
+              resources:
+                requests:
+                  cpu: "2"      # Ensure nodes have capacity
+                  memory: "4Gi"
+```
+
+### Issue: Storage Not Provisioning
+
+```yaml
+# ✅ SOLUTION - Verify storage class exists
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: test-pvc
+spec:
+  storageClassName: "your-storage-class"  # Must exist
+  accessModes: [ReadWriteOnce]
+  resources:
+    requests:
+      storage: 1Gi
+```
+
+### Issue: Monitoring Not Working
+
+```yaml
+# ✅ SOLUTION - Ensure ServiceMonitor namespace labels
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: couchbase
+  labels:
+    openshift.io/cluster-monitoring: "true"  # For OpenShift
+```
+
+## Summary
+
+**Always:**
+- ✅ Use Kubernetes 1.33+ or OpenShift 4.20+
+- ✅ Use Couchbase Operator 2.9.0+
+- ✅ Use Couchbase Server 7.6.x or 8.0.x
+- ✅ Specify exact versions (no 'latest' tags)
+- ✅ Use CSI-compliant persistent storage
+- ✅ Allocate minimum 2 CPU and calculated memory per pod
+- ✅ Enable monitoring with Prometheus
+- ✅ Configure backups with operator-backup:1.5.0+
+- ✅ Use uniform architecture across cluster
+- ✅ Consider AVX2 support for 8.0+ performance
+
+**Never:**
+- ❌ Use unsupported Kubernetes/OpenShift versions
+- ❌ Use 'latest' image tags
+- ❌ Mix CPU architectures in cluster
+- ❌ Deploy without persistent volumes in production
+- ❌ Skip resource requests/limits
+- ❌ Ignore compatibility matrices

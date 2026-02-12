@@ -1,0 +1,52 @@
+---
+apiVersion: couchbase.com/v2
+kind: CouchbaseBucket
+metadata:
+  name: performance-bucket
+  namespace: couchbase
+spec:
+  name: performance
+  memoryQuota: 1Gi
+  replicas: 2
+  ioPriority: high
+  evictionPolicy: fullEviction
+  conflictResolution: seqno
+  enableFlush: false
+  enableIndexReplica: true
+  compressionMode: active
+  minimumDurability: majorityAndPersistActive
+---
+apiVersion: couchbase.com/v2
+kind: CouchbaseBucket
+metadata:
+  name: test-bucket
+  namespace: couchbase
+spec:
+  name: test
+  memoryQuota: 512Mi
+  replicas: 1
+  ioPriority: low
+  evictionPolicy: valueOnly
+  conflictResolution: seqno
+  enableFlush: true
+  enableIndexReplica: false
+  compressionMode: passive
+  minimumDurability: none
+---
+apiVersion: couchbase.com/v2
+kind: CouchbaseBucket
+metadata:
+  name: cache-bucket
+  namespace: couchbase
+spec:
+  name: cache
+  memoryQuota: 512Mi
+  replicas: 1
+  ioPriority: high
+  evictionPolicy: fullEviction
+  conflictResolution: seqno
+  enableFlush: true
+  enableIndexReplica: false
+  compressionMode: active
+  minimumDurability: none
+  maxTTL: 3600s

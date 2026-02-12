@@ -1,0 +1,23 @@
+# OpenShift values when using this chart as a dependency (e.g. ArgoCD).
+# For direct helm install use openshift-values.yaml instead.
+# See: https://docs.couchbase.com/operator/current/helm-setup-guide.html
+
+couchbase-operator:
+  install:
+    couchbaseOperator: true
+    admissionController: true
+    couchbaseCluster: false
+    syncGateway: false
+  couchbaseOperator:
+    image:
+      repository: registry.connect.redhat.com/couchbase/operator
+      tag: "2.9.0"
+    imagePullSecrets:
+      - name: rh-catalog
+  admissionController:
+    image:
+      repository: registry.connect.redhat.com/couchbase/admission-controller
+      tag: "2.8.1"
+    imagePullSecrets:
+      - name: rh-catalog
+  cluster: {}

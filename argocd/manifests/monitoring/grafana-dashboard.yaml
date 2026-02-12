@@ -1,0 +1,79 @@
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: grafana-dashboard-couchbase
+  namespace: couchbase
+  labels:
+    grafana_dashboard: "true"
+data:
+  couchbase-cluster.json: |
+    {
+      "dashboard": {
+        "title": "Couchbase Cluster Overview",
+        "tags": ["couchbase", "performance"],
+        "timezone": "browser",
+        "panels": [
+          {
+            "title": "Operations per Second",
+            "targets": [
+              {
+                "expr": "rate(couchbase_bucket_ops_total[5m])",
+                "legendFormat": "{{bucket}} - {{op_type}}"
+              }
+            ],
+            "type": "graph"
+          },
+          {
+            "title": "Memory Usage",
+            "targets": [
+              {
+                "expr": "couchbase_bucket_mem_used_bytes",
+                "legendFormat": "{{bucket}}"
+              }
+            ],
+            "type": "graph"
+          },
+          {
+            "title": "Item Count",
+            "targets": [
+              {
+                "expr": "couchbase_bucket_item_count",
+                "legendFormat": "{{bucket}}"
+              }
+            ],
+            "type": "graph"
+          },
+          {
+            "title": "Disk Usage",
+            "targets": [
+              {
+                "expr": "couchbase_bucket_disk_used_bytes",
+                "legendFormat": "{{bucket}}"
+              }
+            ],
+            "type": "graph"
+          },
+          {
+            "title": "Active Query Count",
+            "targets": [
+              {
+                "expr": "couchbase_query_active_requests",
+                "legendFormat": "{{instance}}"
+              }
+            ],
+            "type": "graph"
+          },
+          {
+            "title": "Index RAM Usage",
+            "targets": [
+              {
+                "expr": "couchbase_index_memory_used_bytes",
+                "legendFormat": "{{instance}}"
+              }
+            ],
+            "type": "graph"
+          }
+        ]
+      }
+    }

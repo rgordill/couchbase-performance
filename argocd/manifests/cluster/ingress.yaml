@@ -1,0 +1,65 @@
+---
+# Ingress to expose Couchbase Admin UI
+# Works with both vanilla Kubernetes and OpenShift
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: couchbase-admin-ui
+  namespace: couchbase
+  labels:
+    app: couchbase
+    couchbase_cluster: couchbase-cluster
+  annotations:
+    # For OpenShift router (if using OpenShift)
+    route.openshift.io/termination: edge
+    # For nginx ingress controller (if using vanilla K8s) - uncomment if needed
+    # nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    # nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
+    # For cert-manager (optional)
+    # cert-manager.io/cluster-issuer: letsencrypt-prod
+spec:
+  ingressClassName: nginx  # Change to your ingress class or remove for OpenShift
+  tls:
+    - hosts:
+        - couchbase.example.com  # Update with your domain
+      secretName: couchbase-admin-tls
+  rules:
+    - host: couchbase.example.com  # Update with your domain
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: couchbase-cluster-ui
+                port:
+                  name: couchbase-admin
+---
+# Ingress for client connections (SDK) with passthrough
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: couchbase-client
+  namespace: couchbase
+  labels:
+    app: couchbase
+    couchbase_cluster: couchbase-cluster
+  annotations:
+    # For OpenShift router (if using OpenShift)
+    route.openshift.io/termination: passthrough
+    # For nginx ingress controller (if using vanilla K8s) - uncomment if needed
+    # nginx.ingress.kubernetes.io/ssl-passthrough: "true"
+    # nginx.ingress.kubernetes.io/backend-protocol: "HTTPS"
+spec:
+  ingressClassName: nginx  # Change to your ingress class or remove for OpenShift
+  rules:
+    - host: couchbase-client.example.com  # Update with your domain
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: couchbase-cluster
+                port:
+                  number: 11210

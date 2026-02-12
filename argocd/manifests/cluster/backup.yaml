@@ -1,0 +1,108 @@
+---
+# Backup StorageClass (if using S3)
+apiVersion: couchbase.com/v2
+kind: CouchbaseBackupStorageClass
+metadata:
+  name: s3-backup
+  namespace: couchbase
+spec:
+  provider: s3
+  s3:
+    bucket: couchbase-backups
+    region: us-east-1
+    endpoint: https://s3.amazonaws.com
+    useVirtualPath: true
+    credentialsSecret: s3-backup-credentials
+---
+# S3 Credentials Secret (example - fill with your credentials)
+apiVersion: v1
+kind: Secret
+metadata:
+  name: s3-backup-credentials
+  namespace: couchbase
+type: Opaque
+stringData:
+  access-key-id: "YOUR_ACCESS_KEY_ID"
+  secret-access-key: "YOUR_SECRET_ACCESS_KEY"
+---
+# Backup Plan - Full backup weekly, incremental daily
+apiVersion: couchbase.com/v2
+kind: CouchbaseBackup
+metadata:
+  name: couchbase-backup-plan
+  namespace: couchbase
+spec:
+  strategy: full_incremental
+  
+  # Full backup every Sunday at 2 AM
+  full:
+    schedule: "0 2 * * 0"
+  
+  # Incremental backup Monday-Saturday at 2 AM
+  incremental:
+    schedule: "0 2 * * 1-6"
+  
+  # Backup configuration
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  backupRetention: 720h  # 30 days
+  logRetention: 168h     # 7 days
+  
+  # Size for PVC-based backups (if not using S3)
+  size: 100Gi
+  storageClassName: ocs-storagecluster-ceph-rbd
+  
+  # Optional: Use S3 storage
+  # storageClass: s3-backup
+  
+  # Services to backup
+  services:
+    data: true
+    query: true
+    index: true
+    search: true
+    analytics: true
+    eventing: true
+  
+  # Auto-scaling
+  autoScaling:
+    incrementPercent: 20
+    limit: 500Gi
+---
+# PersistentVolumeClaim for local backups (if not using S3)
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: couchbase-backup-pvc
+  namespace: couchbase
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 100Gi
+  storageClassName: ocs-storagecluster-ceph-rbd
+---
+# CronJob for backup verification
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: backup-verification
+  namespace: couchbase
+spec:
+  schedule: "0 6 * * 1"  # Every Monday at 6 AM
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          serviceAccountName: couchbase-backup
+          containers:
+            - name: verify
+              image: couchbase/operator-backup:1.5.0
+              command:
+                - /bin/sh
+                - -c
+                - |
+                  echo "Verifying latest backup..."
+                  # Add your backup verification logic here
+          restartPolicy: OnFailure

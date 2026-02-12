@@ -1,0 +1,10 @@
+apiVersion: v2
+name: couchbase-operator-openshift
+description: Couchbase Operator on OpenShift (operator + admission controller only; cluster via manifests)
+type: application
+version: 0.1.0
+appVersion: "2.9"
+dependencies:
+  - name: couchbase-operator
+    repository: https://couchbase-partners.github.io/helm-charts/
+    version: ">=2.9.0"

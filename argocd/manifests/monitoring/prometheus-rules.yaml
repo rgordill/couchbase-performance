@@ -1,0 +1,90 @@
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: prometheus-rules-couchbase
+  namespace: couchbase
+  labels:
+    prometheus: user-workload
+    role: alert-rules
+data:
+  couchbase-alerts.yaml: |
+    groups:
+      - name: couchbase.rules
+        interval: 30s
+        rules:
+          # Recording rules
+          - record: couchbase:bucket:ops_rate
+            expr: rate(couchbase_bucket_ops_total[5m])
+          
+          - record: couchbase:bucket:memory_utilization
+            expr: |
+              (couchbase_bucket_mem_used_bytes / couchbase_bucket_mem_quota_bytes) * 100
+          
+          - record: couchbase:bucket:disk_utilization
+            expr: |
+              (couchbase_bucket_disk_used_bytes / couchbase_bucket_disk_quota_bytes) * 100
+          
+          # Alerting rules
+          - alert: CouchbaseHighMemoryUsage
+            expr: couchbase:bucket:memory_utilization > 85
+            for: 5m
+            labels:
+              severity: warning
+            annotations:
+              summary: "Couchbase bucket {{ $labels.bucket }} high memory usage"
+              description: "Bucket {{ $labels.bucket }} is using {{ $value }}% of allocated memory"
+          
+          - alert: CouchbaseCriticalMemoryUsage
+            expr: couchbase:bucket:memory_utilization > 95
+            for: 2m
+            labels:
+              severity: critical
+            annotations:
+              summary: "Couchbase bucket {{ $labels.bucket }} critical memory usage"
+              description: "Bucket {{ $labels.bucket }} is using {{ $value }}% of allocated memory"
+          
+          - alert: CouchbaseNodeDown
+            expr: up{job="couchbase-cluster"} == 0
+            for: 1m
+            labels:
+              severity: critical
+            annotations:
+              summary: "Couchbase node {{ $labels.instance }} is down"
+              description: "Couchbase node {{ $labels.instance }} has been down for more than 1 minute"
+          
+          - alert: CouchbaseHighDiskUsage
+            expr: couchbase:bucket:disk_utilization > 80
+            for: 10m
+            labels:
+              severity: warning
+            annotations:
+              summary: "Couchbase bucket {{ $labels.bucket }} high disk usage"
+              description: "Bucket {{ $labels.bucket }} is using {{ $value }}% of allocated disk space"
+          
+          - alert: CouchbaseReplicationLag
+            expr: couchbase_xdcr_docs_failed_cr_source > 1000
+            for: 5m
+            labels:
+              severity: warning
+            annotations:
+              summary: "Couchbase replication lag detected"
+              description: "XDCR replication has {{ $value }} failed documents"
+          
+          - alert: CouchbaseHighOperationRate
+            expr: couchbase:bucket:ops_rate > 10000
+            for: 5m
+            labels:
+              severity: info
+            annotations:
+              summary: "Couchbase bucket {{ $labels.bucket }} high operation rate"
+              description: "Bucket {{ $labels.bucket }} is processing {{ $value }} ops/sec"
+          
+          - alert: CouchbaseIndexerHighMemory
+            expr: (couchbase_index_memory_used_bytes / couchbase_index_memory_quota_bytes) * 100 > 85
+            for: 5m
+            labels:
+              severity: warning
+            annotations:
+              summary: "Couchbase indexer high memory usage"
+              description: "Indexer on {{ $labels.instance }} is using {{ $value }}% of memory quota"

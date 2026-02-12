@@ -1,0 +1,85 @@
+---
+apiVersion: couchbase.com/v2
+kind: CouchbaseUser
+metadata:
+  name: performance-user
+  namespace: couchbase
+spec:
+  authDomain: local
+  authSecret: performance-user-password
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: performance-user-password
+  namespace: couchbase
+type: Opaque
+stringData:
+  password: P3rf0rm@nce!
+---
+apiVersion: couchbase.com/v2
+kind: CouchbaseRoleBinding
+metadata:
+  name: performance-user-binding
+  namespace: couchbase
+spec:
+  subjects:
+    - kind: CouchbaseUser
+      name: performance-user
+  roleRef:
+    kind: CouchbaseGroup
+    name: performance-group
+---
+apiVersion: couchbase.com/v2
+kind: CouchbaseUser
+metadata:
+  name: readonly-user
+  namespace: couchbase
+spec:
+  authDomain: local
+  authSecret: readonly-user-password
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: readonly-user-password
+  namespace: couchbase
+type: Opaque
+stringData:
+  password: R3ad0nly!
+---
+apiVersion: couchbase.com/v2
+kind: CouchbaseRoleBinding
+metadata:
+  name: readonly-user-binding
+  namespace: couchbase
+spec:
+  subjects:
+    - kind: CouchbaseUser
+      name: readonly-user
+  roleRef:
+    kind: CouchbaseGroup
+    name: readonly-group
+---
+apiVersion: couchbase.com/v2
+kind: CouchbaseGroup
+metadata:
+  name: readonly-group
+  namespace: couchbase
+spec:
+  roles:
+    - name: ro_admin
+---
+apiVersion: couchbase.com/v2
+kind: CouchbaseGroup
+metadata:
+  name: performance-group
+  namespace: couchbase
+spec:
+  roles:
+    - name: bucket_admin
+      bucket: performance
+    - name: query_select
+      bucket: test
+    - name: data_reader
+      bucket: cache

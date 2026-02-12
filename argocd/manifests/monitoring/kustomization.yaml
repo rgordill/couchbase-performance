@@ -1,0 +1,17 @@
+---
+# Kustomization file for monitoring
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: couchbase
+
+resources:
+  - service-monitor.yaml
+  - pod-monitor.yaml
+  - grafana-dashboard.yaml
+  - prometheus-rules.yaml
+
+commonLabels:
+  app.kubernetes.io/name: couchbase-monitoring
+  app.kubernetes.io/component: monitoring
+  app.kubernetes.io/managed-by: argocd

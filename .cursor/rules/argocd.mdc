@@ -1,0 +1,196 @@
+---
+description: ArgoCD best practices for folder structure and Application resources
+globs: argocd/**/*.yaml
+alwaysApply: false
+---
+
+# ArgoCD Best Practices
+
+## Folder Structure
+
+### App of Apps Pattern
+
+Use the App of Apps pattern with a root Application in its own directory (e.g., `cluster-apps/`) that references Kustomize overlays:
+
+```yaml
+# ✅ GOOD - Root Application in cluster-apps/cluster-apps.yaml references overlay
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: cluster-apps
+  namespace: argocd
+spec:
+  source:
+    repoURL: https://github.com/org/repo.git
+    targetRevision: HEAD
+    path: argocd/cluster-apps/overlays/aws  # Environment-specific overlay
+```
+
+### Base and Overlays Pattern
+
+- **Base directory** (`argocd/cluster-apps/base/`): Contains common resources referenced by all environments
+- **Overlays directory** (`argocd/cluster-apps/overlays/{env}/`): Environment-specific customizations (aws, libvirt, etc.)
+
+```yaml
+# ✅ GOOD - Base kustomization.yaml references application directories
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - ../../cert-manager
+  - ../../ingress
+  - ../../monitoring/base
+```
+
+### Application Directory Structure
+
+Each application should have its own directory with:
+
+```
+argocd/
+  {app-name}/
+    {app-name}.yaml      # Application manifest
+    kustomization.yaml   # Kustomize resources
+    namespace.yaml       # Namespace (if needed)
+    README.md            # Documentation
+```
+
+## Application Resource Standards
+
+### Required Fields
+
+```yaml
+# ✅ GOOD - Complete Application manifest
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: cert-manager
+  namespace: argocd
+  finalizers:
+    - argocd.argoproj.io/finalizer
+spec:
+  project: default
+  source:
+    repoURL: https://charts.jetstack.io
+    chart: cert-manager
+    targetRevision: v1.16.2
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: cert-manager
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+      allowEmpty: false
+    syncOptions:
+      - CreateNamespace=true
+      - PrunePropagationPolicy=foreground
+      - PruneLast=true
+    retry:
+      limit: 5
+      backoff:
+        duration: 5s
+        factor: 2
+        maxDuration: 3m
+```
+
+### Sync Waves for Deployment Ordering
+
+Use sync-wave annotations to control deployment order:
+
+```yaml
+# ✅ GOOD - Use sync-wave for ordering
+metadata:
+  annotations:
+    argocd.argoproj.io/sync-wave: "-3"  # Negative = early, positive = late
+```
+
+Common sync waves:
+- `-3`: Infrastructure (cert-manager, storage)
+- `-2`: Ingress controllers
+- `-1`: Base services
+- `0`: Applications (default)
+- `1+`: Dependent applications
+
+### Ignore Differences
+
+Always ignore webhook CA bundles and status fields that are managed by controllers:
+
+```yaml
+# ✅ GOOD - Ignore controller-managed fields
+ignoreDifferences:
+  - group: admissionregistration.k8s.io
+    kind: MutatingWebhookConfiguration
+    jqPathExpressions:
+      - '.webhooks[]?.clientConfig.caBundle'
+  - group: admissionregistration.k8s.io
+    kind: ValidatingWebhookConfiguration
+    jqPathExpressions:
+      - '.webhooks[]?.clientConfig.caBundle'
+  - group: monitoring.coreos.com
+    kind: Prometheus
+    jqPathExpressions:
+      - '.status'
+```
+
+### Environment-Specific Configuration
+
+Use Kustomize overlays with ConfigMap generators and replacements:
+
+```yaml
+# ✅ GOOD - Overlay with environment config
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - ../../base
+
+configMapGenerator:
+  - name: global-config
+    namespace: argocd
+    literals:
+      - INGRESS_DOMAIN=example.com
+
+replacements:
+  - source:
+      kind: ConfigMap
+      name: global-config
+      fieldPath: data.INGRESS_DOMAIN
+    targets:
+      - select:
+          kind: Application
+          name: kube-prometheus-stack
+        fieldPaths:
+          - spec.source.helm.valuesObject.grafana.ingress.hosts.[0]
+```
+
+## Anti-Patterns
+
+```yaml
+# ❌ BAD - Missing finalizer
+metadata:
+  name: my-app
+  # Missing finalizers
+
+# ❌ BAD - No sync policy
+spec:
+  # Missing syncPolicy
+
+# ❌ BAD - Hardcoded environment values in base
+spec:
+  source:
+    helm:
+      valuesObject:
+        ingress:
+          hosts:
+            - grafana.prod.example.com  # Should use overlay replacement
+
+# ❌ BAD - Missing ignoreDifferences for webhooks
+# Causes sync conflicts with CA bundles
+```
+
+## Documentation
+
+Each application directory should include a `README.md` with:
+- Purpose and features
+- Sync wave explanation (if applicable)
+- Configuration examples
+- Usage instructions

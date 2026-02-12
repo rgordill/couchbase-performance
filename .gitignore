@@ -1,0 +1,43 @@
+# Secrets and credentials
+*.key
+*.pem
+*.crt
+*-credentials.yaml
+secrets/
+
+# Backup files
+*.bak
+*.backup
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE files
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Logs
+*.log
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+
+# ArgoCD local state
+.argocd/
+
+# Helm cache (used by deploy-manual.sh when home cache is not writable)
+argocd/.helm/
+
+# Performance test results
+results/*.json
+results/*.csv
+!results/.gitkeep
+
+# Environment specific overrides (should be in git but flagging for review)
+# environments/*/secrets.yaml

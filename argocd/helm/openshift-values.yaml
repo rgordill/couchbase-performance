@@ -1,0 +1,29 @@
+# OpenShift values for Couchbase Helm chart
+# See: https://docs.couchbase.com/operator/current/helm-setup-guide.html
+#
+# Before install: create image pull secret in the operator namespace:
+#   kubectl create secret docker-registry rh-catalog -n couchbase-operator \
+#     --docker-server=registry.connect.redhat.com \
+#     --docker-username=<rhel-username> --docker-password=<rhel-password> --docker-email=<email>
+#
+# Install operator + admission controller only; CouchbaseCluster is managed by manifests in argocd/manifests/cluster.
+
+install:
+  couchbaseOperator: true
+  admissionController: true
+  couchbaseCluster: false
+  syncGateway: false
+
+couchbaseOperator:
+  image:
+    repository: registry.connect.redhat.com/couchbase/operator
+    tag: "2.9.0"
+  imagePullSecrets:
+    - name: rh-catalog
+
+admissionController:
+  image:
+    repository: registry.connect.redhat.com/couchbase/admission-controller
+    tag: "2.8.1"
+  imagePullSecrets:
+    - name: rh-catalog

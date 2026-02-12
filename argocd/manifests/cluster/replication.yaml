@@ -1,0 +1,12 @@
+---
+apiVersion: couchbase.com/v2
+kind: CouchbaseReplication
+metadata:
+  name: performance-replication
+  namespace: couchbase
+spec:
+  bucket: performance
+  remoteBucket: performance-replica
+  compressionType: Auto
+  filterExpression: ""
+  paused: false
