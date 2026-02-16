@@ -399,7 +399,7 @@ apiVersion: v1
 kind: ServiceAccount
 metadata:
   name: couchbase-operator
-  namespace: couchbase-operator
+  namespace: couchbase
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
@@ -518,7 +518,7 @@ For compatible (not officially supported) platforms, run certification:
 kubectl apply -f https://raw.githubusercontent.com/couchbase/couchbase-operator/master/test/certification/certification.yaml
 
 # Check results
-kubectl logs -n couchbase-operator certification-job
+kubectl logs -n couchbase certification-job
 ```
 
 ## OpenShift installation (OLM vs manual)

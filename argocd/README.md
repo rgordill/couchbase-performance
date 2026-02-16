@@ -11,10 +11,10 @@ The Couchbase operator is installed via the **official Helm chart** ([Helm setup
 - **Chart repo**: `https://couchbase-partners.github.io/helm-charts/`
 - **Values**: OpenShift-specific values (Red Hat Container Catalog images, image pull secret) are in `helm/openshift-values.yaml`. For ArgoCD the same values are embedded in the operator Application.
 
-**Image pull secret (OpenShift):** Create a pull secret for `registry.connect.redhat.com` in the operator namespace before installing:
+**Image pull secret (OpenShift):** Create a pull secret for `registry.connect.redhat.com` in the **couchbase** namespace (where the operator runs) before installing:
 
 ```bash
-kubectl create secret docker-registry rh-catalog -n couchbase-operator \
+kubectl create secret docker-registry rh-catalog -n couchbase \
   --docker-server=registry.connect.redhat.com \
   --docker-username=<rhel-username> --docker-password=<rhel-password> --docker-email=<email>
 ```
@@ -22,6 +22,11 @@ kubectl create secret docker-registry rh-catalog -n couchbase-operator \
 ### User permissions
 
 By default on OpenShift, users may not have permission to create or modify Couchbase custom resources. The [official guide](https://docs.couchbase.com/operator/current/install-openshift.html) describes installing a cluster role and role bindings. When using ArgoCD or a cluster-admin deployer, the same account that applies the manifests typically has sufficient rights; for restricted users, create the role and role bindings as in the docs.
+
+## Cluster domain and TLS
+
+- **Cluster domain**: `apps.ocp.sa-iberia.lab.eng.brq2.redhat.com`
+- **Ingress**: `manifests/cluster/ingress.yaml` — Admin UI uses edge termination with `cert-manager.io/cluster-issuer: lab-ca-issuer`; client uses passthrough. For edge or reencrypt Ingress, always set the cert-manager cluster-issuer annotation to `lab-ca-issuer`.
 
 ## Architecture
 
@@ -152,7 +157,7 @@ Edit values in the manifests under `manifests/` directory. ArgoCD will automatic
 
 ### Operator pods not starting or ImagePullBackOff
 
-Ensure the image pull secret `rh-catalog` exists in the `couchbase-operator` namespace for `registry.connect.redhat.com` (see [Helm setup guide](https://docs.couchbase.com/operator/current/helm-setup-guide.html)).
+Ensure the image pull secret `rh-catalog` exists in the `couchbase` namespace for `registry.connect.redhat.com` (see [Helm setup guide](https://docs.couchbase.com/operator/current/helm-setup-guide.html)).
 
 ### Check ArgoCD Application Status
 
@@ -162,13 +167,13 @@ kubectl get applications -n argocd
 
 ### Check Couchbase Operator
 
-Per the [official guide](https://docs.couchbase.com/operator/current/install-openshift.html), the operator is ready when the deployments are available. With OLM you get the per-namespace operator; the DAC is separate if you install it manually.
+Per the [official guide](https://docs.couchbase.com/operator/current/install-openshift.html), the operator is ready when the deployments are available. The operator is installed in the **couchbase** namespace (Helm release `operator`) so it manages the CouchbaseCluster there; deployment name is `operator-couchbase-operator`.
 
 ```bash
-# Operator (and optionally admission) in operator namespace
-kubectl get deployments -n couchbase-operator
-kubectl get pods -n couchbase-operator
-kubectl logs -n couchbase-operator -l app=couchbase-operator --tail=50
+# Operator and admission controller in couchbase namespace (deployment: operator-couchbase-operator)
+kubectl get deployments -n couchbase
+kubectl get pods -n couchbase
+kubectl logs -n couchbase -l app.kubernetes.io/name=couchbase-operator --tail=50
 ```
 
 ### Check Couchbase Cluster

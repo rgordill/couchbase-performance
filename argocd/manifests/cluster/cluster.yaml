@@ -15,7 +15,7 @@ metadata:
   name: couchbase-cluster
   namespace: couchbase
 spec:
-  image: couchbase/server:7.6.8
+  image: registry.connect.redhat.com/couchbase/server:8.0.0
   antiAffinity: true
   
   security:
@@ -27,23 +27,17 @@ spec:
     exposeAdminConsole: true
     adminConsoleServices:
       - data
-    adminConsoleServiceType: NodePort
-    exposedFeatures:
-      - client
-      - xdcr
-    exposedFeatureServiceType: NodePort
+    adminConsoleServiceTemplate:
+      spec:
+        type: ClusterIP   # Admin UI; expose via Ingress (omit externalTrafficPolicy for ClusterIP)
+    # Empty: no per-pod services (couchbase-cluster-0000, etc.), so no externalTrafficPolicy: Local conflict with ClusterIP.
+    # Client/XDCR access: use headless service couchbase-cluster (e.g. via Ingress) or in-cluster DNS.
+    # To re-enable per-pod NodePort exposure, set exposedFeatures: [client] and exposedFeatureServiceTemplate.spec.type: NodePort.
+    exposedFeatures: []
   
-  monitoring:
-    prometheus:
-      enabled: true
-      image: couchbase/exporter:1.0.8
-      resources:
-        requests:
-          cpu: 100m
-          memory: 128Mi
-        limits:
-          cpu: 500m
-          memory: 512Mi
+  # Native Prometheus metrics (Server 7.0+) via dedicated Service + ServiceMonitor.
+  # Do not enable the deprecated exporter sidecar (monitoring.prometheus.enabled).
+  # See argocd/manifests/monitoring/ and https://docs.couchbase.com/operator/current/howto-prometheus.html
   
   cluster:
     dataServiceMemoryQuota: 2Gi
@@ -69,9 +63,21 @@ spec:
   buckets:
     managed: true
   
+  # volumeClaimTemplates must be at spec level; volumeMounts reference these by name.
+  volumeClaimTemplates:
+    - metadata:
+        name: couchbase
+      spec:
+        storageClassName: "ocs-storagecluster-ceph-rbd"
+        accessModes:
+          - ReadWriteOnce
+        resources:
+          requests:
+            storage: 50Gi
+  
   servers:
     - name: data
-      size: 3
+      size: 2
       services:
         - data
         - index
@@ -89,19 +95,9 @@ spec:
                 limits:
                   cpu: 4
                   memory: 8Gi
-      volumeClaimTemplates:
-        - metadata:
-            name: couchbase
-          spec:
-            storageClassName: "ocs-storagecluster-ceph-rbd"
-            accessModes:
-              - ReadWriteOnce
-            resources:
-              requests:
-                storage: 50Gi
     
     - name: analytics
-      size: 2
+      size: 1
       services:
         - analytics
         - eventing
@@ -118,13 +114,3 @@ spec:
                 limits:
                   cpu: 2
                   memory: 4Gi
-      volumeClaimTemplates:
-        - metadata:
-            name: couchbase
-          spec:
-            storageClassName: "ocs-storagecluster-ceph-rbd"
-            accessModes:
-              - ReadWriteOnce
-            resources:
-              requests:
-                storage: 30Gi

@@ -16,7 +16,7 @@
 set -e
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-MANIFESTS_DIR="${SCRIPT_DIR}/manifests"
+MANIFESTS_DIR="${SCRIPT_DIR}/../argocdmanifests"
 DRY_RUN=""
 DRY_RUN_FLAG=""
 BUILD_ONLY=""
@@ -93,24 +93,8 @@ if ! $CLI kustomize version &> /dev/null && ! command -v kustomize &> /dev/null;
     exit 1
 fi
 
-# Helm is used for the Couchbase operator (not OLM)
-HELM_RELEASE_NAME="couchbase-operator"
-HELM_CHART_REPO="https://couchbase-partners.github.io/helm-charts/"
-HELM_CHART_NAME="couchbase/couchbase-operator"
-HELM_VALUES="${SCRIPT_DIR}/helm/openshift-values.yaml"
-if [ -z "$BUILD_ONLY" ] && [ -z "$DRY_RUN" ] && [ -z "$REMOVE" ]; then
-    if ! command -v helm &>/dev/null; then
-        echo "ERROR: helm required for operator install (https://docs.couchbase.com/operator/current/helm-setup-guide.html)" >&2
-        exit 1
-    fi
-fi
-
-# Use kubectl kustomize or standalone kustomize
-if $CLI kustomize version &>/dev/null; then
-    KUSTOMIZE_CMD() { $CLI kustomize "$1"; }
-else
-    KUSTOMIZE_CMD() { kustomize build "$1"; }
-fi
+# Operator is expected to be installed separately (e.g. via Argo CD or scripts/render-helm-app.sh --install).
+COUCHBASE_NAMESPACE="couchbase"
 
 # Mutual exclusion for options
 if [ -n "$REMOVE" ] && { [ -n "$BUILD_ONLY" ] || [ -n "$DRY_RUN" ]; }; then
@@ -153,12 +137,12 @@ build_dir() {
         return 0
     fi
     echo ">>> $name"
-    if ! KUSTOMIZE_CMD "$dir" > /dev/null 2>&1; then
-        KUSTOMIZE_CMD "$dir" 2>&1
+    if ! kustomize build "$dir" > /dev/null 2>&1; then
+        kustomize build "$dir" 2>&1
         return 1
-    fi
+    fi  
     local count
-    count=$(KUSTOMIZE_CMD "$dir" 2>/dev/null | grep -c '^---' || true)
+    count=$(kustomize build "$dir" 2>/dev/null | grep -c '^---' || true)
     echo "    Built successfully ($((count + 1)) resources)"
     echo ""
     return 0
@@ -181,9 +165,9 @@ apply_dir() {
         return $?
     fi
     if [ -n "$DRY_RUN_FLAG" ]; then
-        KUSTOMIZE_CMD "$dir" 2>/dev/null | $CLI apply -f - $DRY_RUN_FLAG --validate=false 2>&1 || true
+        kustomize build "$dir" 2>/dev/null | $CLI apply -f - $DRY_RUN_FLAG --validate=false 2>&1 || true
     else
-        KUSTOMIZE_CMD "$dir" 2>/dev/null | $CLI apply -f - --validate=false
+        kustomize build "$dir" 2>/dev/null | $CLI apply -f - --validate=false
     fi
     echo ""
 }
@@ -200,90 +184,44 @@ remove_dir() {
         return 0
     fi
     echo ">>> $name"
-    KUSTOMIZE_CMD "$dir" 2>/dev/null | $CLI delete -f - --ignore-not-found --wait=false 2>&1 || true
+    kustomize build "$dir" 2>/dev/null | $CLI delete -f - --ignore-not-found --wait=false 2>&1 || true
     echo ""
 }
 
-# Order: operator (Helm) -> cluster (manifests) -> monitoring (manifests)
-# Remove in reverse: monitoring -> cluster -> operator (Helm uninstall) -> operator namespace
+# Order: cluster (manifests) -> monitoring (manifests)
+# Remove in reverse: monitoring -> cluster
 if [ -n "$REMOVE" ]; then
     echo "Removing manually deployed objects (reverse order)..."
     echo ""
-    remove_dir "${MANIFESTS_DIR}/monitoring" "3/3 Monitoring (ServiceMonitor, PodMonitor, ...)"
-    remove_dir "${MANIFESTS_DIR}/cluster"    "2/3 Cluster (namespace, cluster, buckets, users, ...)"
-    echo ">>> 1/3 Operator (Helm uninstall)"
-    helm uninstall "${HELM_RELEASE_NAME}" -n couchbase-operator --wait 2>/dev/null || true
-    echo ""
-    remove_dir "${MANIFESTS_DIR}/operator"   "Namespace (couchbase-operator)"
+    remove_dir "${MANIFESTS_DIR}/monitoring" "2/2 Monitoring (ServiceMonitor, PodMonitor, ...)"
+    remove_dir "${MANIFESTS_DIR}/cluster"    "1/2 Cluster (namespace, cluster, buckets, users, ...)"
 elif [ -n "$BUILD_ONLY" ]; then
     echo "Validating kustomize build only (no cluster required)..."
     echo ""
-    build_dir "${MANIFESTS_DIR}/operator"   "1/3 Operator namespace only (operator installed via Helm)"
-    build_dir "${MANIFESTS_DIR}/cluster"   "2/3 Cluster (namespace, cluster, buckets, users, ...)" || exit 1
-    build_dir "${MANIFESTS_DIR}/monitoring" "3/3 Monitoring (ServiceMonitor, PodMonitor, ...)" || exit 1
+    build_dir "${MANIFESTS_DIR}/cluster"   "1/2 Cluster (namespace, cluster, buckets, users, ...)" || exit 1
+    build_dir "${MANIFESTS_DIR}/monitoring" "2/2 Monitoring (ServiceMonitor, PodMonitor, ...)" || exit 1
 else
-    # 1) Namespace
-    apply_dir "${MANIFESTS_DIR}/operator" "1/3 Operator namespace"
-    # 2) Helm install Couchbase operator + admission controller (https://docs.couchbase.com/operator/current/helm-setup-guide.html)
+    # 1) Ensure couchbase namespace exists
     if [ -z "$DRY_RUN_FLAG" ]; then
-        echo ">>> 2/3 Operator (Helm: couchbase-operator chart)"
-        if [ ! -f "$HELM_VALUES" ]; then
-            echo "ERROR: Helm values not found: $HELM_VALUES" >&2
-            exit 1
-        fi
-        # Use workspace Helm cache when default cache is not writable (e.g. in CI/sandbox)
-        HELM_CACHE_DIR="${SCRIPT_DIR}/.helm"
-        export HELM_CACHE_HOME="${HELM_CACHE_DIR}/cache"
-        export HELM_REPOSITORY_CACHE="${HELM_CACHE_DIR}/repository"
-        mkdir -p "$HELM_CACHE_HOME" "$HELM_REPOSITORY_CACHE" 2>/dev/null || true
-        helm repo add couchbase "${HELM_CHART_REPO}" 2>/dev/null || true
-        helm repo update couchbase 2>/dev/null || true
-        helm upgrade --install "${HELM_RELEASE_NAME}" "${HELM_CHART_NAME}" \
-            -f "$HELM_VALUES" \
-            -n couchbase-operator \
-            --create-namespace \
-            --wait --timeout 5m 2>&1
-        echo ""
-    else
-        echo ">>> 2/3 Operator (Helm) - skipped in dry run"
-        echo ""
-    fi
-
-    # Wait for Couchbase CRDs before applying cluster resources
-    if [ -z "$DRY_RUN_FLAG" ]; then
-        echo "Waiting for Couchbase CRDs..."
-        CRDS_READY=""
-        for i in $(seq 1 30); do
-            if $CLI get crd couchbaseclusters.couchbase.com &>/dev/null; then
-                if $CLI wait --for=condition=established crd/couchbaseclusters.couchbase.com --timeout=60s 2>/dev/null; then
-                    CRDS_READY=1
-                    break
-                fi
-            fi
-            echo "    Attempt $i/30: CRDs not ready, waiting 10s..."
-            sleep 10
-        done
-        if [ -z "$CRDS_READY" ]; then
-            echo "ERROR: Couchbase CRDs not established. Check operator pods: $CLI get pods -n couchbase-operator"
-            exit 1
-        fi
-        echo "    Couchbase CRDs ready."
-        echo ""
-    else
-        if ! $CLI get crd couchbaseclusters.couchbase.com &>/dev/null; then
-            echo "Note: Couchbase CRDs not installed; cluster apply may show 'resource mapping not found' (expected)."
-            echo ""
+        if [ -f "${MANIFESTS_DIR}/cluster/namespace.yaml" ]; then
+            $CLI apply -f "${MANIFESTS_DIR}/cluster/namespace.yaml" 2>&1 || true
+        else
+            $CLI create namespace "${COUCHBASE_NAMESPACE}" --dry-run=client -o yaml | $CLI apply -f - 2>&1 || true
         fi
     fi
-
-    apply_dir "${MANIFESTS_DIR}/cluster"    "3/3 Cluster (namespace, cluster, buckets, users, ...)"
-    apply_dir "${MANIFESTS_DIR}/monitoring" "Monitoring (ServiceMonitor, PodMonitor, ...)"
+    # 2) Apply cluster and monitoring (operator must be installed separately, e.g. via Argo CD or render-helm-app.sh --install)
+    if [ -z "$DRY_RUN_FLAG" ] && ! $CLI get crd couchbaseclusters.couchbase.com &>/dev/null; then
+        echo "Note: Couchbase CRDs not found; ensure the operator is installed first. Cluster apply may fail." >&2
+        echo "" >&2
+    fi
+    apply_dir "${MANIFESTS_DIR}/cluster"    "1/2 Cluster (namespace, cluster, buckets, users, ...)"
+    apply_dir "${MANIFESTS_DIR}/monitoring" "2/2 Monitoring (ServiceMonitor, PodMonitor, ...)"
 fi
 
 if [ -n "$REMOVE" ]; then
     echo "=============================================="
     echo "Remove complete. Manually deployed objects deleted."
-    echo "Namespaces couchbase and couchbase-operator may remain if not empty."
+    echo "Namespace couchbase may remain if not empty."
     echo "=============================================="
 elif [ -n "$BUILD_ONLY" ]; then
     echo "=============================================="
@@ -301,8 +239,7 @@ else
     echo "=============================================="
     echo ""
     echo "Next steps:"
-    echo "  $CLI get pods -n couchbase-operator"
-    echo "  $CLI get pods -n couchbase"
-    echo "  $CLI get couchbasecluster -n couchbase"
+    echo "  $CLI get pods -n ${COUCHBASE_NAMESPACE}"
+    echo "  $CLI get couchbasecluster -n ${COUCHBASE_NAMESPACE}"
     echo ""
 fi

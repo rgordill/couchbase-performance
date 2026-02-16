@@ -12,6 +12,7 @@ resources:
   - users.yaml
   - replication.yaml
   - network-policy.yaml
+  - certificate-admin.yaml
   - ingress.yaml
   - resource-limits.yaml
 

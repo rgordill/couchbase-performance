@@ -35,17 +35,14 @@ spec:
           port: 11210 # Data
         - protocol: TCP
           port: 11207 # Data SSL
-    # Allow from OpenShift monitoring
+    # Allow from OpenShift user-workload Prometheus (native metrics on 8091)
     - from:
-        - namespaceSelector:
-            matchLabels:
-              openshift.io/cluster-monitoring: "true"
         - namespaceSelector:
             matchLabels:
               name: openshift-user-workload-monitoring
       ports:
         - protocol: TCP
-          port: 9102  # Metrics
+          port: 8091  # Native Prometheus metrics (Server 7.0+)
     # Allow from application namespaces (add your app namespaces here)
     - from:
         - namespaceSelector:

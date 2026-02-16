@@ -2,21 +2,24 @@
 
 IMAGE_NAME ?= couchbase-perftest
 IMAGE_TAG ?= latest
-REGISTRY ?= quay.io/myorg
+REGISTRY ?= quay.io/rgordill
 BUILDER ?= $(shell command -v podman 2>/dev/null || command -v docker 2>/dev/null)
-LIBCOUCHBASE_VERSION ?= 3.3.12
+# libcouchbase tarball: libcouchbase-<version>_<os>_<arch>.tar (from GitHub releases)
+version ?= 3.3.18
+os ?= rhel8
+arch ?= x86_64
 
 .PHONY: help
 help: ## Show this help
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-30s\033[0m %s\n", $$1, $$2}'
 
 .PHONY: build
-build: ## Build the container image
+build: ## Build the container image (version, os, arch; untar into /usr/local)
 	$(BUILDER) build \
 		-t $(REGISTRY)/$(IMAGE_NAME):$(IMAGE_TAG) \
-		--build-arg LIBCOUCHBASE_VERSION=$(LIBCOUCHBASE_VERSION) \
-		--build-arg BUILD_DATE=$$(date -u +'%Y-%m-%dT%H:%M:%SZ') \
-		--build-arg VCS_REF=$$(git rev-parse --short HEAD 2>/dev/null || echo 'unknown') \
+		--build-arg version=$(version) \
+		--build-arg os=$(os) \
+		--build-arg arch=$(arch) \
 		-f Containerfile .
 
 .PHONY: push

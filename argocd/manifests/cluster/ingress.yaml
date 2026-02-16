@@ -1,6 +1,9 @@
 ---
-# Ingress to expose Couchbase Admin UI
-# Works with both vanilla Kubernetes and OpenShift
+# Ingress to expose Couchbase Admin UI (edge termination: TLS at ingress, HTTP to backend).
+# OpenShift creates a Route from this Ingress when: ingressClassName matches the cluster
+# (see "kubectl get ingressclass"), host is set, backend port is by number, and for edge
+# TLS the secret exists (Certificate below creates couchbase-admin-tls via cert-manager).
+# Cluster domain: apps.ocp.sa-iberia.lab.eng.brq2.redhat.com
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
@@ -10,21 +13,17 @@ metadata:
     app: couchbase
     couchbase_cluster: couchbase-cluster
   annotations:
-    # For OpenShift router (if using OpenShift)
     route.openshift.io/termination: edge
-    # For nginx ingress controller (if using vanilla K8s) - uncomment if needed
-    # nginx.ingress.kubernetes.io/ssl-redirect: "true"
-    # nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
-    # For cert-manager (optional)
-    # cert-manager.io/cluster-issuer: letsencrypt-prod
+    route.openshift.io/insecureEdgeTerminationPolicy: Redirect
 spec:
-  ingressClassName: nginx  # Change to your ingress class or remove for OpenShift
+  ingressClassName: openshift-default
   tls:
+    # Secret created by Certificate (certificate-admin.yaml); must exist for OpenShift to create Route
     - hosts:
-        - couchbase.example.com  # Update with your domain
+        - couchbase-admin.apps.ocp.sa-iberia.lab.eng.brq2.redhat.com
       secretName: couchbase-admin-tls
   rules:
-    - host: couchbase.example.com  # Update with your domain
+    - host: couchbase-admin.apps.ocp.sa-iberia.lab.eng.brq2.redhat.com
       http:
         paths:
           - path: /
@@ -33,9 +32,9 @@ spec:
               service:
                 name: couchbase-cluster-ui
                 port:
-                  name: couchbase-admin
+                  name: couchbase-ui
 ---
-# Ingress for client connections (SDK) with passthrough
+# Ingress for client connections (SDK) with passthrough (TLS to backend; no cert-manager)
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
@@ -45,21 +44,17 @@ metadata:
     app: couchbase
     couchbase_cluster: couchbase-cluster
   annotations:
-    # For OpenShift router (if using OpenShift)
     route.openshift.io/termination: passthrough
-    # For nginx ingress controller (if using vanilla K8s) - uncomment if needed
-    # nginx.ingress.kubernetes.io/ssl-passthrough: "true"
-    # nginx.ingress.kubernetes.io/backend-protocol: "HTTPS"
 spec:
-  ingressClassName: nginx  # Change to your ingress class or remove for OpenShift
+  ingressClassName: openshift-default
   rules:
-    - host: couchbase-client.example.com  # Update with your domain
+    - host: couchbase-client.apps.ocp.sa-iberia.lab.eng.brq2.redhat.com
       http:
         paths:
-          - path: /
-            pathType: Prefix
+          - path: ''
+            pathType: ImplementationSpecific
             backend:
               service:
                 name: couchbase-cluster
                 port:
-                  number: 11210
+                  name: couchbase

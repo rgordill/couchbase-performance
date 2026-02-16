@@ -132,6 +132,59 @@ ignoreDifferences:
       - '.status'
 ```
 
+### Helm: Use values from a file, not valuesObject
+
+Prefer referencing a values file in the repo over inlining `valuesObject` in the Application. Use `helm.valueFiles` so values live in versioned YAML files and stay out of the Application manifest.
+
+### Helm: Two sources (chart + values), not a wrapper chart
+
+When the chart is from a Helm repository and values live in Git, use **two sources** in the same Application: one source for the chart (Helm repo), one for the values (Git). Do **not** add a wrapper chart in Git that depends on the upstream chart.
+
+```yaml
+# ✅ GOOD - Chart from Helm repo, values from Git (two sources)
+spec:
+  sources:
+    - repoURL: https://charts.example.com
+      chart: my-chart
+      targetRevision: "1.0"
+      helm:
+        releaseName: my-release
+        valueFiles:
+          - $values/values.yaml
+    - repoURL: https://github.com/org/repo.git
+      targetRevision: HEAD
+      ref: values
+      path: argocd/helm/my-app
+```
+
+- The first source is the Helm chart (repoURL + chart + targetRevision).
+- The second source is Git; give it `ref: values` so the first source can reference files via `$values/...`. Paths in `valueFiles` (e.g. `$values/values.yaml`) are relative to the ref source’s `path` (or repo root if `path` is omitted).
+- Use `sources` (array), not `source` (single), when using this pattern.
+
+```yaml
+# ❌ BAD - Wrapper chart in Git that depends on the upstream chart
+spec:
+  source:
+    repoURL: https://github.com/org/repo.git
+    path: argocd/helm/operator   # directory with Chart.yaml + dependencies
+    helm:
+      valueFiles:
+        - values.yaml
+```
+
+```yaml
+# ❌ BAD - Large inline valuesObject
+spec:
+  source:
+    repoURL: https://charts.example.com
+    chart: my-chart
+    helm:
+      valuesObject:
+        install: { ... }
+        image: { repository: ..., tag: ... }
+        # many more keys...
+```
+
 ### Environment-Specific Configuration
 
 Use Kustomize overlays with ConfigMap generators and replacements:
@@ -174,17 +227,20 @@ metadata:
 spec:
   # Missing syncPolicy
 
-# ❌ BAD - Hardcoded environment values in base
+# ❌ BAD - Hardcoded environment values in base or large valuesObject
 spec:
   source:
     helm:
       valuesObject:
         ingress:
           hosts:
-            - grafana.prod.example.com  # Should use overlay replacement
+            - grafana.prod.example.com  # Prefer valueFiles + overlay replacement
 
 # ❌ BAD - Missing ignoreDifferences for webhooks
 # Causes sync conflicts with CA bundles
+
+# ❌ BAD - Helm wrapper chart in Git (Chart.yaml with dependency on upstream chart)
+# Use two sources instead: one for the chart, one for the values (ref + $values/...)
 ```
 
 ## Documentation

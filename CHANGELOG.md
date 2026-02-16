@@ -56,7 +56,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Features
 - Multi-environment support via ApplicationSet
 - Auto-scaling configuration
-- High availability setup (3 data nodes, 2 analytics nodes)
+- High availability setup (2 data nodes, 1 analytics node; 3 replicas total)
 - Persistent storage with OpenShift Data Foundation
 - Automatic failover configuration
 - Bucket replication support

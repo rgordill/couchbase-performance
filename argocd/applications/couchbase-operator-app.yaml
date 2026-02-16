@@ -1,45 +1,32 @@
 ---
 # Couchbase operator via Helm (https://docs.couchbase.com/operator/current/helm-setup-guide.html)
-# Chart: https://couchbase-partners.github.io/helm-charts/
-# Ensure image pull secret 'rh-catalog' exists in couchbase-operator namespace for registry.connect.redhat.com
+# Chart: couchbase-operator from wrapper in argocd/helm/operator (values from values.yaml).
+# Operator is deployed in the couchbase namespace so it manages CouchbaseCluster there (per-namespace operator).
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
   name: couchbase-operator
-  namespace: argocd
+  namespace: openshift-gitops
   annotations:
     argocd.argoproj.io/sync-wave: "1"
-  finalizers:
-    - resources-finalizer.argocd.argoproj.io
 spec:
   project: default
-  source:
-    repoURL: https://couchbase-partners.github.io/helm-charts/
-    chart: couchbase-operator
-    targetRevision: "2.9"
-    helm:
-      releaseName: couchbase-operator
-      valuesObject:
-        install:
-          couchbaseOperator: true
-          admissionController: true
-          couchbaseCluster: false
-          syncGateway: false
-        couchbaseOperator:
-          image:
-            repository: registry.connect.redhat.com/couchbase/operator
-            tag: "2.9.0"
-          imagePullSecrets:
-            - name: rh-catalog
-        admissionController:
-          image:
-            repository: registry.connect.redhat.com/couchbase/admission-controller
-            tag: "2.8.1"
-          imagePullSecrets:
-            - name: rh-catalog
+  sources:
+    - repoURL: https://couchbase-partners.github.io/helm-charts/
+      chart: couchbase-operator
+      version: "2.90.0"
+      helm:
+        releaseName: operator
+
+    - repoURL: https://github.com/rgordill/couchbase-performance.git
+      targetRevision: HEAD
+      path: argocd/manifests/operator
+      valueFiles:
+        - values.yaml
+
   destination:
     server: https://kubernetes.default.svc
-    namespace: couchbase-operator
+    namespace: couchbase
   syncPolicy:
     automated:
       prune: true
@@ -53,16 +40,16 @@ spec:
         duration: 5s
         factor: 2
         maxDuration: 3m
-  ignoreDifferences:
-    - group: apps
-      kind: Deployment
-      jsonPointers:
-        - /spec/replicas
-    - group: admissionregistration.k8s.io
-      kind: MutatingWebhookConfiguration
-      jqPathExpressions:
-        - '.webhooks[]?.clientConfig.caBundle'
-    - group: admissionregistration.k8s.io
-      kind: ValidatingWebhookConfiguration
-      jqPathExpressions:
-        - '.webhooks[]?.clientConfig.caBundle'
+  # ignoreDifferences:
+  #   - group: apps
+  #     kind: Deployment
+  #     jsonPointers:
+  #       - /spec/replicas
+  #   - group: admissionregistration.k8s.io
+  #     kind: MutatingWebhookConfiguration
+  #     jqPathExpressions:
+  #       - '.webhooks[]?.clientConfig.caBundle'
+  #   - group: admissionregistration.k8s.io
+  #     kind: ValidatingWebhookConfiguration
+  #     jqPathExpressions:
+  #       - '.webhooks[]?.clientConfig.caBundle'

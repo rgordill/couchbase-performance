@@ -6,7 +6,7 @@
 set -e
 
 NAMESPACE="couchbase"
-OPERATOR_NAMESPACE="couchbase-operator"
+OPERATOR_NAMESPACE="couchbase"
 
 # Detect CLI (prefer kubectl)
 if command -v kubectl &> /dev/null; then
@@ -44,12 +44,6 @@ print_status() {
 # Check namespaces
 echo ""
 echo "1. Checking Namespaces..."
-if $CLI get namespace $OPERATOR_NAMESPACE &> /dev/null; then
-    print_status "OK" "Operator namespace exists"
-else
-    print_status "FAIL" "Operator namespace missing"
-fi
-
 if $CLI get namespace $NAMESPACE &> /dev/null; then
     print_status "OK" "Couchbase namespace exists"
 else
@@ -59,7 +53,7 @@ fi
 # Check operator
 echo ""
 echo "2. Checking Couchbase Operator..."
-OPERATOR_READY=$($CLI get deployment -n $OPERATOR_NAMESPACE -l app=couchbase-operator -o jsonpath='{.items[0].status.readyReplicas}' 2>/dev/null || echo "0")
+OPERATOR_READY=$($CLI get deployment -n $OPERATOR_NAMESPACE -l app.kubernetes.io/name=couchbase-operator -o jsonpath='{.items[0].status.readyReplicas}' 2>/dev/null || echo "0")
 if [ "$OPERATOR_READY" -gt "0" ]; then
     print_status "OK" "Operator is running ($OPERATOR_READY replicas)"
 else

@@ -1,0 +1,16 @@
+---
+# Certificate for Admin UI TLS. Creates secret couchbase-admin-tls so the Ingress
+# (and the Route created from it by OpenShift) can use edge termination.
+# Apply before or with the Ingress; ensure lab-ca-issuer ClusterIssuer exists.
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: couchbase-admin-tls
+  namespace: couchbase
+spec:
+  secretName: couchbase-admin-tls
+  issuerRef:
+    name: lab-ca-issuer
+    kind: ClusterIssuer
+  dnsNames:
+    - couchbase-admin.apps.ocp.sa-iberia.lab.eng.brq2.redhat.com

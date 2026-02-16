@@ -96,11 +96,13 @@ spec:
       targetPort: 8080
 
 # Ingress (standard K8s)
+# On OpenShift: use ingressClassName: openshift-default (not nginx).
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
   name: my-ingress
 spec:
+  ingressClassName: openshift-default  # Use "nginx" on vanilla K8s; "openshift-default" on OpenShift
   rules:
     - host: myapp.example.com
       http:
@@ -169,7 +171,7 @@ spec:
     termination: edge
     insecureEdgeTerminationPolicy: Redirect
 
-# INSTEAD, USE THIS:
+# INSTEAD, USE THIS (Ingress on OpenShift):
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
@@ -177,6 +179,7 @@ metadata:
   annotations:
     route.openshift.io/termination: edge
 spec:
+  ingressClassName: openshift-default  # Required on OpenShift
   tls:
     - hosts: [myapp.apps.cluster.example.com]
       secretName: my-tls
@@ -281,6 +284,7 @@ spec:
 
 # ✅ GOOD - Standard Kubernetes Ingress with Edge Termination
 # Equivalent to OpenShift Route with edge termination
+# On OpenShift use ingressClassName: openshift-default; on vanilla K8s use nginx (or your controller's class).
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
@@ -289,7 +293,7 @@ metadata:
     cert-manager.io/cluster-issuer: letsencrypt-prod
     nginx.ingress.kubernetes.io/ssl-redirect: "true"
 spec:
-  ingressClassName: nginx
+  ingressClassName: nginx  # Use openshift-default on OpenShift
   tls:
     - hosts:
         - myapp.example.com
@@ -308,6 +312,7 @@ spec:
 
 # ✅ GOOD - Ingress with Passthrough (TLS to backend)
 # Equivalent to OpenShift Route with passthrough termination
+# On OpenShift use ingressClassName: openshift-default.
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
@@ -316,7 +321,7 @@ metadata:
     nginx.ingress.kubernetes.io/ssl-passthrough: "true"
     nginx.ingress.kubernetes.io/backend-protocol: "HTTPS"
 spec:
-  ingressClassName: nginx
+  ingressClassName: nginx  # Use openshift-default on OpenShift
   rules:
     - host: myapp.example.com
       http:
@@ -331,6 +336,7 @@ spec:
 
 # ✅ GOOD - Ingress with Re-encrypt
 # Equivalent to OpenShift Route with reencrypt termination
+# On OpenShift use ingressClassName: openshift-default.
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
@@ -341,7 +347,7 @@ metadata:
     nginx.ingress.kubernetes.io/proxy-ssl-verify: "true"
     nginx.ingress.kubernetes.io/proxy-ssl-secret: "default/backend-ca-cert"
 spec:
-  ingressClassName: nginx
+  ingressClassName: nginx  # Use openshift-default on OpenShift
   tls:
     - hosts:
         - myapp.example.com
@@ -618,6 +624,20 @@ When you encounter OpenShift-specific resources:
 
 ## TLS Termination: Ingress vs Routes
 
+### IngressClassName
+
+- **On OpenShift**: Always set `spec.ingressClassName: openshift-default` on Ingress resources so the default OpenShift router is used.
+- **On vanilla Kubernetes**: Use the class for your ingress controller (e.g. `nginx`).
+
+### cert-manager for edge / reencrypt
+
+- For Ingress with **edge** or **reencrypt** termination (TLS at ingress), add `cert-manager.io/cluster-issuer: lab-ca-issuer` so cert-manager issues the certificate into the Ingress `tls.secretName`. Do not add this for **passthrough** (TLS to backend).
+
+### Project defaults (this repo)
+
+- **Cluster domain**: `apps.ocp.sa-iberia.lab.eng.brq2.redhat.com` — use subdomains (e.g. `couchbase-admin.apps.ocp.sa-iberia.lab.eng.brq2.redhat.com`) in Ingress `host` and `tls.hosts`.
+- **ClusterIssuer**: `lab-ca-issuer` for Ingress TLS (edge/reencrypt).
+
 ### ✅ PREFER: Ingress with Annotations
 
 Use standard Kubernetes Ingress with appropriate annotations to achieve the same TLS termination as OpenShift Routes:
@@ -631,7 +651,7 @@ Use standard Kubernetes Ingress with appropriate annotations to achieve the same
 ### Edge Termination (Most Common)
 
 ```yaml
-# ✅ BEST - Ingress with edge termination (vanilla K8s)
+# ✅ BEST - Ingress with edge termination (vanilla K8s; on OpenShift use ingressClassName: openshift-default)
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
@@ -640,7 +660,7 @@ metadata:
     cert-manager.io/cluster-issuer: letsencrypt-prod
     nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
 spec:
-  ingressClassName: nginx
+  ingressClassName: nginx  # openshift-default on OpenShift
   tls:
     - hosts: [app.example.com]
       secretName: app-tls

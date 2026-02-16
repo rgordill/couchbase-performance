@@ -1,0 +1,56 @@
+# Large documents: 10–50 KB
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: perftest-large-documents
+  namespace: couchbase
+  labels:
+    app.kubernetes.io/name: couchbase-perftest
+    app.kubernetes.io/component: benchmark
+    profile: large-documents
+spec:
+  ttlSecondsAfterFinished: 86400
+  backoffLimit: 1
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: couchbase-perftest
+        profile: large-documents
+    spec:
+      restartPolicy: Never
+      containers:
+        - name: benchmark
+          image: quay.io/rgordill/couchbase-perftest:latest
+          imagePullPolicy: IfNotPresent
+          command: ["/bin/sh", "-c"]
+          args:
+            - |
+              exec cbc-pillowfight \
+                -U "couchbase://${CB_HOST}/${CB_BUCKET}" \
+                -u "${CB_USER}" \
+                -P "${CB_PASSWORD}" \
+                --num-items 10000 \
+                --num-threads 4 \
+                --min-size 10240 \
+                --max-size 51200 \
+                --set-pct 50 \
+                --json
+          env:
+            - name: CB_HOST
+              value: "couchbase-cluster"
+            - name: CB_BUCKET
+              value: "performance"
+            - name: CB_USER
+              value: "performance-user"
+            - name: CB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: performance-user-password
+                  key: password
+          resources:
+            requests:
+              cpu: 200m
+              memory: 256Mi
+            limits:
+              cpu: "2"
+              memory: 512Mi

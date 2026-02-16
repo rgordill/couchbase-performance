@@ -47,7 +47,6 @@ sleep 5
 # Clean up any remaining resources
 echo "Cleaning up remaining resources..."
 $CLI delete namespace couchbase --ignore-not-found=true
-$CLI delete namespace couchbase-operator --ignore-not-found=true
 
 echo ""
 echo "==================================="

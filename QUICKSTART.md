@@ -111,10 +111,10 @@ kubectl apply -f app-of-apps.yaml
 watch -n 5 'kubectl get applications -n argocd | grep couchbase'
 
 # Watch pods coming up
-watch -n 5 'kubectl get pods -n couchbase-operator && echo "" && kubectl get pods -n couchbase'
+watch -n 5 'kubectl get pods -n couchbase'
 
 # Check operator logs
-kubectl logs -f -n couchbase-operator -l app=couchbase-operator
+kubectl logs -f -n couchbase -l app.kubernetes.io/name=couchbase-operator
 
 # This will take about 5-10 minutes for full deployment
 ```
@@ -229,7 +229,9 @@ Edit `argocd/manifests/cluster/cluster.yaml`:
 ```yaml
 servers:
   - name: data
-    size: 5  # Change from 3 to 5
+    size: 2  # Data + index + query nodes
+  - name: analytics
+    size: 1  # Analytics + eventing (3 replicas total)
 ```
 
 Commit and push - ArgoCD will auto-sync.
@@ -242,9 +244,9 @@ Commit and push - ArgoCD will auto-sync.
 # Check operator logs
 make logs-operator
 
-# Check operator subscription
-kubectl get subscription -n couchbase-operator
-kubectl describe subscription couchbase-enterprise-certified -n couchbase-operator
+# Check operator subscription (if using OLM)
+kubectl get subscription -n couchbase
+kubectl describe subscription couchbase-enterprise-certified -n couchbase
 ```
 
 ### Issue: Pods Pending

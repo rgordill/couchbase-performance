@@ -1,4 +1,10 @@
 ---
+# ServiceMonitor for Couchbase native Prometheus endpoint (Server 7.0+).
+# Targets the dedicated metrics Service (couchbase-metrics) on port 8091.
+# ServiceMonitor is in couchbase; if Prometheus runs in another namespace (e.g. monitoring),
+# configure Prometheus serviceMonitorNamespaceSelector to include couchbase, or move this
+# resource to the Prometheus namespace and set namespaceSelector.matchNames to [couchbase].
+# See: https://docs.couchbase.com/operator/current/howto-prometheus.html
 apiVersion: monitoring.coreos.com/v1
 kind: ServiceMonitor
 metadata:
@@ -10,35 +16,26 @@ metadata:
 spec:
   selector:
     matchLabels:
-      app: couchbase
-      couchbase_cluster: couchbase-cluster
+      app.couchbase.com/name: couchbase
   endpoints:
     - port: metrics
-      interval: 30s
+      interval: 15s
       path: /metrics
       scheme: http
-      scrapeTimeout: 25s
-      relabelings:
-        - sourceLabels: [__meta_kubernetes_pod_name]
-          targetLabel: pod
-        - sourceLabels: [__meta_kubernetes_pod_node_name]
-          targetLabel: node
-        - sourceLabels: [__meta_kubernetes_namespace]
-          targetLabel: namespace
-        - sourceLabels: [__meta_kubernetes_pod_label_couchbase_cluster]
-          targetLabel: cluster
-        - sourceLabels: [__meta_kubernetes_pod_label_couchbase_server]
-          targetLabel: server_group
-      metricRelabelings:
-        - sourceLabels: [__name__]
-          regex: 'couchbase_.*'
-          action: keep
+      basicAuth:
+        username:
+          name: cb-admin-auth
+          key: username
+        password:
+          name: cb-admin-auth
+          key: password
 ---
+# ServiceMonitor for Couchbase Autonomous Operator metrics (operator runs in couchbase namespace).
 apiVersion: monitoring.coreos.com/v1
 kind: ServiceMonitor
 metadata:
   name: couchbase-operator
-  namespace: couchbase-operator
+  namespace: couchbase
   labels:
     app: couchbase-operator
 spec:
@@ -50,9 +47,3 @@ spec:
       interval: 30s
       path: /metrics
       scheme: http
-      scrapeTimeout: 25s
-      relabelings:
-        - sourceLabels: [__meta_kubernetes_pod_name]
-          targetLabel: pod
-        - sourceLabels: [__meta_kubernetes_namespace]
-          targetLabel: namespace

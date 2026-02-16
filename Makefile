@@ -3,7 +3,7 @@
 # Default repository URL - override with: make deploy REPO_URL=https://...
 REPO_URL ?= https://github.com/your-org/couchbase-performance.git
 NAMESPACE ?= couchbase
-OPERATOR_NAMESPACE ?= couchbase-operator
+OPERATOR_NAMESPACE ?= couchbase
 
 # Detect CLI (prefer kubectl)
 CLI := $(shell command -v kubectl 2>/dev/null || command -v oc 2>/dev/null)
@@ -59,7 +59,7 @@ status: ## Show status of all components
 	@$(CLI) get applications -n $(ARGOCD_NAMESPACE) | grep couchbase || echo "No applications found"
 	@echo ""
 	@echo "=== Operator Status ==="
-	@$(CLI) get pods -n $(OPERATOR_NAMESPACE) -l app=couchbase-operator || echo "Operator not found"
+	@$(CLI) get pods -n $(OPERATOR_NAMESPACE) -l app.kubernetes.io/name=couchbase-operator || echo "Operator not found"
 	@echo ""
 	@echo "=== Cluster Status ==="
 	@$(CLI) get couchbaseclusters -n $(NAMESPACE) || echo "No clusters found"
@@ -81,7 +81,7 @@ sync: ## Force sync all ArgoCD applications
 	@argocd app sync couchbase-monitoring --force || echo "Failed to sync monitoring"
 
 logs-operator: ## Show operator logs
-	@$(CLI) logs -n $(OPERATOR_NAMESPACE) -l app=couchbase-operator --tail=100 -f
+	@$(CLI) logs -n $(OPERATOR_NAMESPACE) -l app.kubernetes.io/name=couchbase-operator --tail=100 -f
 
 logs-cluster: ## Show cluster logs
 	@$(CLI) logs -n $(NAMESPACE) -l app=couchbase --tail=100 -f

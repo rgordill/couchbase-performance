@@ -5,6 +5,7 @@ metadata:
   name: performance-user
   namespace: couchbase
 spec:
+  name: performance-user
   authDomain: local
   authSecret: performance-user-password
 ---
@@ -36,6 +37,7 @@ metadata:
   name: readonly-user
   namespace: couchbase
 spec:
+  name: readonly-user
   authDomain: local
   authSecret: readonly-user-password
 ---

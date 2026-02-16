@@ -6,10 +6,24 @@ kind: Kustomization
 namespace: couchbase
 
 resources:
+  - couchbase-metrics-service.yaml
   - service-monitor.yaml
-  - pod-monitor.yaml
   - grafana-dashboard.yaml
   - prometheus-rules.yaml
+
+# Override selector so it only matches Couchbase pods (commonLabels would add labels pods don't have)
+patchesJson6902:
+  - target:
+      kind: Service
+      name: couchbase-metrics
+      namespace: couchbase
+    patch: |-
+      - op: replace
+        path: /spec/selector
+        value:
+          app: couchbase
+          couchbase_cluster: couchbase-cluster
+          couchbase_server: "true"
 
 commonLabels:
   app.kubernetes.io/name: couchbase-monitoring

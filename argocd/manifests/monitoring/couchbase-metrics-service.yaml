@@ -1,0 +1,22 @@
+---
+# Dedicated metrics Service for Couchbase native Prometheus endpoint (Server 7.0+).
+# One service per cluster; Couchbase aggregates stats across all pods.
+# See: https://docs.couchbase.com/operator/current/howto-prometheus.html
+apiVersion: v1
+kind: Service
+metadata:
+  name: couchbase-metrics
+  namespace: couchbase
+  labels:
+    app.couchbase.com/name: couchbase
+    app: couchbase
+    couchbase_cluster: couchbase-cluster
+spec:
+  ports:
+    - name: metrics
+      port: 8091
+      protocol: TCP
+  selector:
+    app: couchbase
+    couchbase_cluster: couchbase-cluster
+    couchbase_server: "true"

@@ -1,0 +1,18 @@
+---
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: couchbase
+
+resources:
+  - rbac.yaml
+  - perftest-mixed.yaml
+  - perftest-write-heavy.yaml
+  - perftest-read-heavy.yaml
+  - perftest-small-documents.yaml
+  - perftest-large-documents.yaml
+  - perftest-stress.yaml
+
+commonLabels:
+  app.kubernetes.io/name: couchbase-perftest
+  app.kubernetes.io/component: benchmark

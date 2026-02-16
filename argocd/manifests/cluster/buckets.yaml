@@ -12,7 +12,7 @@ spec:
   evictionPolicy: fullEviction
   conflictResolution: seqno
   enableFlush: false
-  enableIndexReplica: true
+  enableIndexReplica: false   # must be false for magma/plasma buckets (operator validation)
   compressionMode: active
   minimumDurability: majorityAndPersistActive
 ---

@@ -11,6 +11,7 @@ This guide explains how to customize the Couchbase deployment for your specific 
 5. [Performance Tuning](#performance-tuning)
 6. [Security](#security)
 7. [Backup and Recovery](#backup-and-recovery)
+8. [Troubleshooting](#troubleshooting)
 
 ## Cluster Configuration
 
@@ -39,7 +40,7 @@ Adjust node resources in `manifests/cluster/cluster.yaml`:
 ```yaml
 servers:
   - name: data
-    size: 3  # Number of nodes
+    size: 2  # Data server class size (2 data + 1 analytics = 3 replicas total)
     pod:
       spec:
         containers:
@@ -65,6 +66,23 @@ cluster:
   eventingServiceMemoryQuota: 1Gi
   analyticsServiceMemoryQuota: 1Gi
 ```
+
+### Ingress and cluster domain
+
+Cluster domain and TLS for Ingress are configured in `manifests/cluster/ingress.yaml`:
+
+- **Cluster domain**: `apps.ocp.sa-iberia.lab.eng.brq2.redhat.com`
+- **Admin UI (edge termination)**: `couchbase-admin.apps.ocp.sa-iberia.lab.eng.brq2.redhat.com` — TLS at ingress; a Certificate in `certificate-admin.yaml` uses ClusterIssuer `lab-ca-issuer` to create the secret referenced by the Ingress so OpenShift can create the Route.
+- **Client (passthrough)**: `couchbase-client.apps.ocp.sa-iberia.lab.eng.brq2.redhat.com` — TLS passes through to the backend; no cert-manager annotation.
+
+For any Ingress with **edge** or **reencrypt** termination (TLS terminated at ingress), add:
+
+```yaml
+annotations:
+  cert-manager.io/cluster-issuer: lab-ca-issuer
+```
+
+Ensure the ClusterIssuer `lab-ca-issuer` exists in the cluster. Passthrough Ingress resources do not need this annotation.
 
 ## Bucket Configuration
 
@@ -177,15 +195,21 @@ spec:
 
 ## Monitoring Configuration
 
+Monitoring uses **Couchbase Server native Prometheus metrics** (Server 7.0+) as recommended in the [official guide](https://docs.couchbase.com/operator/current/howto-prometheus.html). The deprecated exporter sidecar is not used.
+
+- **Metrics Service** (`manifests/monitoring/couchbase-metrics-service.yaml`): A dedicated Service targeting the admin port 8091 on Couchbase server pods, with label `app.couchbase.com/name: couchbase` for ServiceMonitor selection. One service per cluster; Couchbase exposes a Prometheus-compatible endpoint on each pod.
+- **ServiceMonitor** (`manifests/monitoring/service-monitor.yaml`): Directs Prometheus to scrape the metrics Service with `basicAuth` using the cluster admin Secret (`cb-admin-auth`). Includes `namespaceSelector.matchNames: [couchbase]`. If your Prometheus runs in another namespace (e.g. `monitoring`), ensure its `serviceMonitorNamespaceSelector` includes `couchbase`, or move the ServiceMonitor to the Prometheus namespace and keep `namespaceSelector` pointing at `couchbase`.
+- **TLS**: If the Couchbase admin console uses TLS, use port **18091** in the metrics Service and add `tlsConfig: {}` (or appropriate [SafeTLSConfig](https://prometheus-operator.dev/docs/api-reference/api/#monitoring.coreos.com/v1.SafeTLSConfig)) to the ServiceMonitor endpoint.
+
 ### Adjust Scrape Intervals
 
-Edit `manifests/monitoring/service-monitor.yaml`:
+Edit `manifests/monitoring/service-monitor.yaml` (Couchbase cluster endpoint):
 
 ```yaml
 endpoints:
   - port: metrics
-    interval: 30s        # Change scrape interval
-    scrapeTimeout: 25s   # Change timeout
+    interval: 15s        # Change scrape interval
+    scrapeTimeout: 10s   # Change timeout
 ```
 
 ### Custom Prometheus Rules
@@ -414,4 +438,31 @@ kubectl exec -n couchbase couchbase-cluster-0000 -- curl -s localhost:9102/metri
 ```bash
 argocd app get couchbase-cluster
 argocd app sync couchbase-cluster --force
+```
+
+### Admin UI Ingress: OpenShift not creating a Route from the Ingress
+
+OpenShift creates a Route from the `couchbase-admin-ui` Ingress when the Ingress is valid and the controller admits it. If no Route appears, fix the following:
+
+1. **ingressClassName** must match the cluster’s IngressClass used by the default IngressController. Check with:
+   ```bash
+   kubectl get ingressclass
+   ```
+   Use the name of the default class (or the one backed by the IngressController). The manifests use `openshift-default`; if your cluster uses a different name (e.g. `openshift`), set `spec.ingressClassName` in `manifests/cluster/ingress.yaml` to that value.
+
+2. **TLS secret must exist** for edge termination. The secret `couchbase-admin-tls` is created by the Certificate in `manifests/cluster/certificate-admin.yaml` (cert-manager). Ensure the Certificate is applied and the ClusterIssuer `lab-ca-issuer` exists. Until the secret exists, the controller may not create the Route. Check:
+   ```bash
+   kubectl get certificate -n couchbase couchbase-admin-tls
+   kubectl get secret -n couchbase couchbase-admin-tls
+   ```
+
+3. **Backend port** must be by number: `port.number: 8091` (not `port.name`), so the controller can create the Route without resolving service port names.
+
+4. **OpenShift annotations** on the Ingress: `route.openshift.io/termination: edge` and `route.openshift.io/insecureEdgeTerminationPolicy: Redirect` are set in the manifest.
+
+**Verify** that the Route was created:
+
+```bash
+kubectl get route -n couchbase
+kubectl get ingress -n couchbase couchbase-admin-ui -o yaml
 ```

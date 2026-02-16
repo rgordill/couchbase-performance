@@ -106,6 +106,12 @@ Password: P@ssw0rd123!
 
 Import the provided dashboard from `argocd/manifests/monitoring/grafana-dashboard.yaml`
 
+## 🌐 Access
+
+- **Cluster domain**: `apps.ocp.sa-iberia.lab.eng.brq2.redhat.com`
+- **Admin UI**: https://couchbase-admin.apps.ocp.sa-iberia.lab.eng.brq2.redhat.com (TLS via cert-manager, cluster-issuer: lab-ca-issuer)
+- **Client (SDK)**: couchbase-client.apps.ocp.sa-iberia.lab.eng.brq2.redhat.com (passthrough)
+
 ## 🔧 Configuration
 
 ### Customize Cluster Size
@@ -115,7 +121,9 @@ Edit `argocd/manifests/cluster/cluster.yaml`:
 ```yaml
 servers:
   - name: data
-    size: 3  # Change number of nodes
+    size: 2  # Data + index + query (change as needed)
+  - name: analytics
+    size: 1  # Analytics + eventing (3 replicas total by default)
 ```
 
 ### Adjust Memory Quotas
@@ -221,7 +229,7 @@ argocd app get couchbase-cluster
 
 ```bash
 # Operator logs
-kubectl logs -n couchbase-operator -l app=couchbase-operator --tail=100
+kubectl logs -n couchbase -l app.kubernetes.io/name=couchbase-operator --tail=100
 
 # Couchbase logs
 kubectl logs -n couchbase -l app=couchbase --tail=100
