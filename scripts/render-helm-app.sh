@@ -96,6 +96,7 @@ fi
 
 REPO_URL=$(yq -r ".spec.sources[$HELM_INDEX].repoURL" "$APPLICATION_FILE")
 CHART_NAME=$(yq -r ".spec.sources[$HELM_INDEX].chart" "$APPLICATION_FILE")
+# Argo CD Helm source may use .version or .targetRevision for chart version
 CHART_VERSION=$(yq -r ".spec.sources[$HELM_INDEX].version // .spec.sources[$HELM_INDEX].targetRevision // \"\"" "$APPLICATION_FILE")
 RELEASE_NAME=$(yq -r ".spec.sources[$HELM_INDEX].helm.releaseName // \"release\"" "$APPLICATION_FILE")
 NAMESPACE=$(yq -r ".spec.destination.namespace // \"default\"" "$APPLICATION_FILE")

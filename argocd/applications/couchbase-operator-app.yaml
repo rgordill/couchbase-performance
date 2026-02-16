@@ -14,7 +14,7 @@ spec:
   sources:
     - repoURL: https://couchbase-partners.github.io/helm-charts/
       chart: couchbase-operator
-      version: "2.90.0"
+      targetRevision: "2.90.0"
       helm:
         releaseName: operator
 
@@ -40,7 +40,11 @@ spec:
         duration: 5s
         factor: 2
         maxDuration: 3m
-  # ignoreDifferences:
+  ignoreDifferences:
+  - group: apiextensions.k8s.io 
+    kind: CustomResourceDefinition 
+    jsonPointers: 
+    - /metadata/annotations
   #   - group: apps
   #     kind: Deployment
   #     jsonPointers:

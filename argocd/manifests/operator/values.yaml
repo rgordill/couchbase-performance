@@ -18,3 +18,5 @@ admissionController:
   image:
     repository: registry.connect.redhat.com/couchbase/admission-controller
     tag: "2.9.0"
+
+couchbaseCluster: {}
