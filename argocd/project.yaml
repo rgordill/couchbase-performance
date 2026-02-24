@@ -13,23 +13,16 @@ spec:
 
   # --- Allowed deployment destinations ---
   destinations:
-    - namespace: couchbase
+    - namespace: "couchbase-*"
       server: https://kubernetes.default.svc
 
-  # # --- Optional: restrict what kinds of resources can be deployed ---
-  # clusterResourceWhitelist:
-  #   - group: ""
-  #     kind: Namespace
-  #   - group: "rbac.authorization.k8s.io"
-  #     kind: ClusterRole
-
-  # # namespaceResourceWhitelist:
-  #   - group: ""
-  #     kind: ConfigMap
-  #   - group: apps
-  #     kind: Deployment
-  #   - group: apps
-  #     kind: StatefulSet
+  # --- Allow all cluster- and namespace-scoped resources (e.g. CRDs, Namespace, cluster-scoped RBAC) ---
+  clusterResourceWhitelist:
+    - group: "*"
+      kind: "*"
+  namespaceResourceWhitelist:
+    - group: "*"
+      kind: "*"
 
   # # --- Optional: deny certain resources ---
   # namespaceResourceBlacklist:

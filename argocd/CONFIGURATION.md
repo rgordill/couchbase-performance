@@ -466,3 +466,49 @@ OpenShift creates a Route from the `couchbase-admin-ui` Ingress when the Ingress
 kubectl get route -n couchbase
 kubectl get ingress -n couchbase couchbase-admin-ui -o yaml
 ```
+
+### Admission webhook: "certificate signed by unknown authority"
+
+If you see:
+
+```text
+Internal error occurred: failed calling webhook "operator-couchbase-admission-controller.couchbase.svc": ...
+tls: failed to verify certificate: x509: certificate signed by unknown authority
+```
+
+the API server is calling the admission webhook over TLS but the **CA bundle** in the webhook configuration does not match the CA that signed the admission controller’s serving certificate (e.g. after a sync overwrote it or the chart’s auto-generated CA was never written into the webhook).
+
+**One-time fix:** patch the webhook’s `caBundle` with the CA from the admission controller’s secret.
+
+1. Find the secret that contains the CA (usually the admission TLS secret in `couchbase-operator` namespace). Common names: `operator-couchbase-admission-controller`, `admission-controller-ca`, or any secret with key `ca.crt` or a `tls.crt` chain:
+
+   ```bash
+   kubectl get secrets -n couchbase-operator -o name | xargs -I{} sh -c 'kubectl get {} -n couchbase-operator -o jsonpath="{.metadata.name} {.data}" | grep -q "ca\.crt\|tls\.crt" && kubectl get {} -n couchbase-operator -o name'
+   ```
+
+2. Export the CA PEM (use the secret name you found; if the secret has `ca.crt`, use that; otherwise use the first certificate from `tls.crt`):
+
+   ```bash
+   NS=couchbase-operator
+   SECRET=operator-couchbase-admission-tls   # or admission-controller-ca
+   kubectl get secret -n $NS $SECRET -o jsonpath='{.data.ca\.crt}' | base64 -d > /tmp/admission-ca.pem
+   # If ca.crt is missing, use the issuing CA from tls.crt (first cert in chain):
+   # kubectl get secret -n $NS $SECRET -o jsonpath='{.data.tls\.crt}' | base64 -d | openssl x509 -out /tmp/admission-ca.pem 2>/dev/null || true
+   ```
+
+3. Patch the validating and mutating webhook configurations with the CA (base64-encoded):
+
+   ```bash
+   CABUNDLE=$(base64 -w 0 /tmp/admission-ca.pem)
+   for kind in ValidatingWebhookConfiguration MutatingWebhookConfiguration; do
+     for name in $(kubectl get $kind -o jsonpath='{.items[*].metadata.name}' | tr ' ' '\n' | grep -i couchbase); do
+       kubectl patch $kind $name --type='json' -p='[{"op":"replace","path":"/webhooks/0/clientConfig/caBundle","value":"'$CABUNDLE'"}]'
+     done
+   done
+   ```
+
+Or run the script from the repo root (see below).
+
+**Preventing overwrite:** The Argo CD Application for the operator already has `ignoreDifferences` for webhook `caBundle` and `RespectIgnoreDifferences=true`, so normal syncs should not overwrite the patched CA. If you use **ServerSideApply**, Argo CD may still replace the webhook resource; after patching, the next sync will leave `caBundle` as-is because of the ignore rule.
+
+**Long-term fix (in place):** The operator Application includes a cert-manager `Certificate` (`argocd/manifests/couchbase/operator/cert-manager/admission-certificate.yaml`) that uses ClusterIssuer `lab-ca-issuer` to issue the admission controller TLS secret `operator-couchbase-admission-tls`. The Helm chart is configured to use that secret (`admissionSecret.name`). If the API server still reports "certificate signed by unknown authority" after sync, run `scripts/patch-admission-webhook-ca.sh` once to set the webhook’s `caBundle` from that secret’s `ca.crt` (Argo CD ignores `caBundle` so the patch persists).

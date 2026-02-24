@@ -1,12 +1,14 @@
 ---
 # Couchbase operator via Helm (https://docs.couchbase.com/operator/current/helm-setup-guide.html)
-# Chart: couchbase-operator from wrapper in argocd/helm/operator (values from values.yaml).
-# Operator is deployed in the couchbase namespace so it manages CouchbaseCluster there (per-namespace operator).
+# Chart: couchbase-operator; values from values.yaml. Deployed in couchbase-operator namespace;
+# operator and admission controller use ClusterRole scope to manage all couchbase-* namespaces.
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
   name: couchbase-operator
   namespace: openshift-gitops
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
   annotations:
     argocd.argoproj.io/sync-wave: "1"
 spec:
@@ -17,17 +19,22 @@ spec:
       targetRevision: "2.90.0"
       helm:
         releaseName: operator
-        valueFiles: 
-         - $values/argocd/manifests/couchbase/operator/values.yaml
+        valueFiles:
+          - $values/argocd/manifests/couchbase/operator/values.yaml
 
     - repoURL: https://github.com/rgordill/couchbase-performance.git
       targetRevision: HEAD
       path: argocd/manifests/couchbase/operator
       ref: values
 
+    # cert-manager Certificate for admission controller TLS (ClusterIssuer lab-ca-issuer)
+    - repoURL: https://github.com/rgordill/couchbase-performance.git
+      targetRevision: HEAD
+      path: argocd/manifests/couchbase/operator/cert-manager
+
   destination:
     server: https://kubernetes.default.svc
-    namespace: couchbase
+    namespace: couchbase-operator
   syncPolicy:
     automated:
       prune: true
@@ -35,7 +42,9 @@ spec:
       allowEmpty: false
     syncOptions:
       - CreateNamespace=true
-      - ServerSideApply=false
+      # ServerSideApply avoids huge last-applied-configuration annotation on large CRDs (262144 bytes limit)
+      - ServerSideApply=true
+      - RespectIgnoreDifferences=true
     retry:
       limit: 5
       backoff:
@@ -43,6 +52,7 @@ spec:
         factor: 2
         maxDuration: 3m
   ignoreDifferences:
+    # Webhook CA bundles are injected by the cluster; do not drift
     - group: admissionregistration.k8s.io
       kind: MutatingWebhookConfiguration
       jqPathExpressions:
@@ -51,3 +61,27 @@ spec:
       kind: ValidatingWebhookConfiguration
       jqPathExpressions:
         - '.webhooks[]?.clientConfig.caBundle'
+    # CRD status is updated by the API server; avoid managing large annotations (e.g. last-applied)
+    - group: apiextensions.k8s.io
+      kind: CustomResourceDefinition
+      jqPathExpressions:
+        - '.status'
+        - '.metadata.annotations'
+    # Admission controller TLS secret is generated/injected by the cluster
+    - group: ""
+      kind: Secret
+      namespace: couchbase-operator
+      namePattern: ".*(admission|webhook).*"
+      jqPathExpressions:
+        - '.data'
+    # clusterIP is assigned by the cluster for ClusterIP services
+    - group: ""
+      kind: Service
+      jqPathExpressions:
+        - '.spec.clusterIP'
+    # Deployment revision and rollout annotations are managed by the controller
+    - group: apps
+      kind: Deployment
+      jqPathExpressions:
+        - '.metadata.annotations["deployment.kubernetes.io/revision"]'
+        - '.metadata.annotations["kubectl.kubernetes.io/restartedAt"]'

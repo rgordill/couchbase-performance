@@ -1,13 +1,14 @@
 ---
-# Default build: same as base (namespace: couchbase).
-# ApplicationSet uses path cluster/overlays/{{environment}} for per-environment namespace.
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 
-resources:
-  - base
-
 namespace: couchbase
+
+resources:
+  - cluster.yaml
+  - buckets.yaml
+  - users.yaml
+  - ingress.yaml
 
 labels:
   - includeSelectors: true

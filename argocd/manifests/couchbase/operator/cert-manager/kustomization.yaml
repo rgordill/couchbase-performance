@@ -1,0 +1,29 @@
+---
+# Kustomization for admission controller Certificate (default: ClusterIssuer lab-ca-issuer).
+# issuerRef.name is set via replacement from ConfigMap; see README for extending to other clusters.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+  - base
+
+configMapGenerator:
+  - name: cert-manager-admission-issuer-config
+    literals:
+      - cluster-issuer=lab-ca-issuer
+    options:
+      disableNameSuffixHash: true
+
+replacements:
+  - source:
+      kind: ConfigMap
+      name: cert-manager-admission-issuer-config
+      fieldPath: data.cluster-issuer
+    targets:
+      - select:
+          kind: Certificate
+          name: operator-couchbase-admission-tls
+        fieldPaths:
+          - spec.issuerRef.name
+        options:
+          create: true

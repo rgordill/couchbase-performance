@@ -1,7 +1,8 @@
 # OpenShift values for Couchbase Helm chart
 # See: https://docs.couchbase.com/operator/current/helm-setup-guide.html
 #
-# Install operator + admission controller only; CouchbaseCluster is managed by manifests in argocd/manifests/couchbase/cluster.
+# Install operator + admission controller in couchbase-operator namespace; they use ClusterRole
+# scope to manage all couchbase-* namespaces. CouchbaseCluster resources live in cluster overlays.
 
 install:
   couchbaseOperator: true
@@ -10,11 +11,19 @@ install:
   syncGateway: false
 
 couchbaseOperator:
+  scope: ClusterRole  # Manage CouchbaseCluster and related resources in all namespaces (couchbase-*)
   image:
     repository: registry.connect.redhat.com/couchbase/operator
     tag: "2.9.0"
 
 admissionController:
+  scope: ClusterRole  # Validate Couchbase resources in all namespaces
   image:
     repository: registry.connect.redhat.com/couchbase/admission-controller
     tag: "2.9.0"
+
+# Use cert-manager-issued secret for admission controller TLS (issued by lab-ca-issuer).
+# Webhook caBundle must match the issuing CA; run scripts/patch-admission-webhook-ca.sh once
+# if the API server still reports "certificate signed by unknown authority" (patched caBundle is ignored by Argo via ignoreDifferences).
+admissionSecret:
+  name: operator-couchbase-admission-tls

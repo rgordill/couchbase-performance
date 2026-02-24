@@ -1,13 +1,11 @@
 ---
-# Default build: same as base (namespace: couchbase).
-# ApplicationSet uses path cluster/overlays/{{environment}} for per-environment namespace.
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 
 resources:
-  - base
+  - ../../base
 
-namespace: couchbase
+namespace: couchbase-prod
 
 labels:
   - includeSelectors: true
@@ -15,3 +13,4 @@ labels:
       app.kubernetes.io/name: couchbase
       app.kubernetes.io/component: database
       app.kubernetes.io/managed-by: argocd
+      environment: prod
