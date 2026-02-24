@@ -36,7 +36,6 @@ spec:
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 resources:
-  - ../../cert-manager
   - ../../ingress
   - ../../monitoring/base
 ```
@@ -63,19 +62,19 @@ argocd/
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
-  name: cert-manager
+  name: my-app
   namespace: argocd
   finalizers:
     - argocd.argoproj.io/finalizer
 spec:
   project: default
   source:
-    repoURL: https://charts.jetstack.io
-    chart: cert-manager
-    targetRevision: v1.16.2
+    repoURL: https://charts.example.com
+    chart: my-app
+    targetRevision: v1.0.0
   destination:
     server: https://kubernetes.default.svc
-    namespace: cert-manager
+    namespace: my-app
   syncPolicy:
     automated:
       prune: true
@@ -105,7 +104,7 @@ metadata:
 ```
 
 Common sync waves:
-- `-3`: Infrastructure (cert-manager, storage)
+- `-3`: Infrastructure (e.g. storage)
 - `-2`: Ingress controllers
 - `-1`: Base services
 - `0`: Applications (default)

@@ -22,8 +22,6 @@ admissionController:
     repository: registry.connect.redhat.com/couchbase/admission-controller
     tag: "2.9.0"
 
-# Use cert-manager-issued secret for admission controller TLS (issued by lab-ca-issuer).
-# Webhook caBundle must match the issuing CA; run scripts/patch-admission-webhook-ca.sh once
 # if the API server still reports "certificate signed by unknown authority" (patched caBundle is ignored by Argo via ignoreDifferences).
-admissionSecret:
-  name: operator-couchbase-admission-tls
+# admissionSecret:
+#   disableValidatingWebhook: true

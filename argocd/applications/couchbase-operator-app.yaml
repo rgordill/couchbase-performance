@@ -27,11 +27,6 @@ spec:
       path: argocd/manifests/couchbase/operator
       ref: values
 
-    # cert-manager Certificate for admission controller TLS (ClusterIssuer lab-ca-issuer)
-    - repoURL: https://github.com/rgordill/couchbase-performance.git
-      targetRevision: HEAD
-      path: argocd/manifests/couchbase/operator/cert-manager
-
   destination:
     server: https://kubernetes.default.svc
     namespace: couchbase-operator

@@ -26,7 +26,7 @@ By default on OpenShift, users may not have permission to create or modify Couch
 ## Cluster domain and TLS
 
 - **Cluster domain**: `apps.ocp.sa-iberia.lab.eng.brq2.redhat.com`
-- **Ingress**: `manifests/couchbase/cluster/ingress.yaml` — Admin UI uses edge termination with `cert-manager.io/cluster-issuer: lab-ca-issuer`; client uses passthrough. For edge or reencrypt Ingress, always set the cert-manager cluster-issuer annotation to `lab-ca-issuer`.
+- **Ingress**: `manifests/couchbase/cluster/ingress.yaml` — Admin UI uses edge termination with `cert-manager.io/cluster-issuer: lab-ca-issuer`; client uses passthrough. For edge or reencrypt Ingress, set the cert-manager cluster-issuer annotation to `lab-ca-issuer`.
 
 ## Architecture
 

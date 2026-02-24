@@ -16,7 +16,7 @@ spec:
     path: argocd/manifests/couchbase/cluster
   destination:
     server: https://kubernetes.default.svc
-    namespace: couchbase
+    namespace: couchbase-dev
   syncPolicy:
     automated:
       prune: true

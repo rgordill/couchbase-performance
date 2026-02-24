@@ -2,7 +2,7 @@
 # Ingress to expose Couchbase Admin UI (edge termination: TLS at ingress, HTTP to backend).
 # OpenShift creates a Route from this Ingress when: ingressClassName matches the cluster
 # (see "kubectl get ingressclass"), host is set, backend port is by number, and for edge
-# TLS the secret exists (Certificate below creates couchbase-admin-tls via cert-manager).
+# TLS: secret couchbase-admin-tls is created by cert-manager (cert-manager.io/cluster-issuer: lab-ca-issuer).
 # Cluster domain: apps.ocp.sa-iberia.lab.eng.brq2.redhat.com
 apiVersion: networking.k8s.io/v1
 kind: Ingress
@@ -19,7 +19,7 @@ metadata:
 spec:
   ingressClassName: openshift-default
   tls:
-    # Secret created by Certificate (certificate-admin.yaml); must exist for OpenShift to create Route
+    # Secret created by cert-manager from ClusterIssuer lab-ca-issuer
     - hosts:
         - couchbase-admin.apps.ocp.sa-iberia.lab.eng.brq2.redhat.com
       secretName: couchbase-admin-tls

@@ -72,7 +72,7 @@ cluster:
 Cluster domain and TLS for Ingress are configured in `manifests/couchbase/cluster/ingress.yaml`:
 
 - **Cluster domain**: `apps.ocp.sa-iberia.lab.eng.brq2.redhat.com`
-- **Admin UI (edge termination)**: `couchbase-admin.apps.ocp.sa-iberia.lab.eng.brq2.redhat.com` — TLS at ingress; a Certificate in `certificate-admin.yaml` uses ClusterIssuer `lab-ca-issuer` to create the secret referenced by the Ingress so OpenShift can create the Route.
+- **Admin UI (edge termination)**: `couchbase-admin.apps.ocp.sa-iberia.lab.eng.brq2.redhat.com` — TLS at ingress; Ingress uses `cert-manager.io/cluster-issuer: lab-ca-issuer` so cert-manager issues the secret referenced by the Ingress; OpenShift creates the Route from it.
 - **Client (passthrough)**: `couchbase-client.apps.ocp.sa-iberia.lab.eng.brq2.redhat.com` — TLS passes through to the backend; no cert-manager annotation.
 
 For any Ingress with **edge** or **reencrypt** termination (TLS terminated at ingress), add:
@@ -450,7 +450,7 @@ OpenShift creates a Route from the `couchbase-admin-ui` Ingress when the Ingress
    ```
    Use the name of the default class (or the one backed by the IngressController). The manifests use `openshift-default`; if your cluster uses a different name (e.g. `openshift`), set `spec.ingressClassName` in `manifests/couchbase/cluster/ingress.yaml` to that value.
 
-2. **TLS secret must exist** for edge termination. The secret `couchbase-admin-tls` is created by the Certificate in `manifests/couchbase/cluster/certificate-admin.yaml` (cert-manager). Ensure the Certificate is applied and the ClusterIssuer `lab-ca-issuer` exists. Until the secret exists, the controller may not create the Route. Check:
+2. **TLS secret must exist** for edge termination. The secret `couchbase-admin-tls` is created by cert-manager when the Ingress has `cert-manager.io/cluster-issuer: lab-ca-issuer`. Ensure the ClusterIssuer `lab-ca-issuer` exists. Until the secret exists, the controller may not create the Route. Check:
    ```bash
    kubectl get certificate -n couchbase couchbase-admin-tls
    kubectl get secret -n couchbase couchbase-admin-tls
@@ -509,6 +509,4 @@ the API server is calling the admission webhook over TLS but the **CA bundle** i
 
 Or run the script from the repo root (see below).
 
-**Preventing overwrite:** The Argo CD Application for the operator already has `ignoreDifferences` for webhook `caBundle` and `RespectIgnoreDifferences=true`, so normal syncs should not overwrite the patched CA. If you use **ServerSideApply**, Argo CD may still replace the webhook resource; after patching, the next sync will leave `caBundle` as-is because of the ignore rule.
-
-**Long-term fix (in place):** The operator Application includes a cert-manager `Certificate` (`argocd/manifests/couchbase/operator/cert-manager/admission-certificate.yaml`) that uses ClusterIssuer `lab-ca-issuer` to issue the admission controller TLS secret `operator-couchbase-admission-tls`. The Helm chart is configured to use that secret (`admissionSecret.name`). If the API server still reports "certificate signed by unknown authority" after sync, run `scripts/patch-admission-webhook-ca.sh` once to set the webhook’s `caBundle` from that secret’s `ca.crt` (Argo CD ignores `caBundle` so the patch persists).
+**Preventing overwrite:** The Argo CD Application for the operator already has `ignoreDifferences` for webhook `caBundle` and `RespectIgnoreDifferences=true`, so normal syncs should not overwrite the patched CA.
