@@ -6,7 +6,7 @@ REGISTRY ?= quay.io/rgordill
 BUILDER ?= $(shell command -v podman 2>/dev/null || command -v docker 2>/dev/null)
 # libcouchbase tarball: libcouchbase-<version>_<os>_<arch>.tar (from GitHub releases)
 version ?= 3.3.18
-os ?= rhel8
+os ?= rhel10
 arch ?= x86_64
 
 .PHONY: help

@@ -49,7 +49,7 @@ When modifying ArgoCD manifests:
 
 When changing Couchbase configuration:
 
-1. Update `argocd/manifests/cluster/cluster.yaml` or related files
+1. Update `argocd/manifests/couchbase/cluster/cluster.yaml` or related files
 2. Consider backward compatibility
 3. Update documentation in `CONFIGURATION.md`
 4. Test with different cluster sizes

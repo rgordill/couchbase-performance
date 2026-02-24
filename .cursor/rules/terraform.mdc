@@ -37,6 +37,11 @@ When configuring Terraform through Ansible:
 - For sensitive variables, use the `variables_files` parameter pointing to Ansible-managed var files
 - Store default values in Terraform's `variables.tf` with sensible defaults
 
+### VM SSH Key and Users (vm/terraform)
+
+- **SSH public key**: Accept `ssh_public_key` (content from provisioner `~/.ssh/id_rsa.pub`, supplied via Ansible vault). Libvirt injects it via cloud-init; AWS creates an `aws_key_pair` when set.
+- **VM SSH users**: **cloud-user** (libvirt), **ec2-user** (AWS). See `.cursor/rules/vm.mdc` for full convention.
+
 ### Required Collection
 
 Ensure the `cloud.terraform` collection is installed:

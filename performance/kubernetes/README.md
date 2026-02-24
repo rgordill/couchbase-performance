@@ -5,7 +5,7 @@ Kubernetes Jobs that run Couchbase performance tests using the [perftest contain
 ## Prerequisites
 
 - Couchbase cluster and `performance` bucket in the `couchbase` namespace.
-- **CouchbaseUser** `performance-user` and **Secret** `performance-user-password` (from `argocd/manifests/cluster/users.yaml`). The Secret must have key **`password`** (Couchbase Operator and the Jobs both use this key).
+- **CouchbaseUser** `performance-user` and **Secret** `performance-user-password` (from `argocd/manifests/couchbase/cluster/users.yaml`). The Secret must have key **`password`** (Couchbase Operator and the Jobs both use this key).
 
 ## If you see LCB_ERR_AUTHENTICATION_FAILURE (206)
 

@@ -21,7 +21,7 @@ spec:
       containers:
         - name: benchmark
           image: quay.io/rgordill/couchbase-perftest:latest
-          imagePullPolicy: IfNotPresent
+          imagePullPolicy: Always
           command: ["/bin/sh", "-c"]
           args:
             - |
@@ -52,5 +52,5 @@ spec:
               cpu: 200m
               memory: 256Mi
             limits:
-              cpu: "2"
-              memory: 512Mi
+              cpu: "4"
+              memory: 2Gi

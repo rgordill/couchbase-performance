@@ -43,7 +43,7 @@ spec:
       source:
         repoURL: https://github.com/your-org/couchbase-performance.git
         targetRevision: HEAD
-        path: argocd/manifests/cluster
+        path: argocd/manifests/couchbase/cluster
         helm:
           parameters:
             - name: namespace

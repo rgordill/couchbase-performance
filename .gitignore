@@ -4,6 +4,9 @@
 *.crt
 *-credentials.yaml
 secrets/
+**/vault.yml
+**/secrets.yml
+*.vault
 
 # Backup files
 *.bak
@@ -38,6 +41,21 @@ argocd/.helm/
 results/*.json
 results/*.csv
 !results/.gitkeep
+
+# Terraform (vm/terraform/libvirt and vm/terraform/aws)
+vm/terraform/libvirt/.terraform/
+vm/terraform/libvirt/*.tfstate
+vm/terraform/libvirt/*.tfstate.*
+vm/terraform/libvirt/*.tfvars
+!vm/terraform/libvirt/*.tfvars.example
+vm/terraform/aws/.terraform/
+vm/terraform/aws/*.tfstate
+vm/terraform/aws/*.tfstate.*
+vm/terraform/aws/*.tfvars
+!vm/terraform/aws/*.tfvars.example
+
+# Ansible runtime (vm/ansible/)
+vm/ansible/.ansible/
 
 # Environment specific overrides (should be in git but flagging for review)
 # environments/*/secrets.yaml

@@ -15,30 +15,30 @@ ARGOCD APPLICATIONS (3):
   - applications/couchbase-monitoring-app.yaml
 
 OPERATOR MANIFESTS (4):
-  - manifests/operator/namespace.yaml
-  - manifests/operator/operator-group.yaml
-  - manifests/operator/subscription.yaml
-  - manifests/operator/kustomization.yaml
+  - manifests/couchbase/operator/namespace.yaml
+  - manifests/couchbase/operator/operator-group.yaml
+  - manifests/couchbase/operator/subscription.yaml
+  - manifests/couchbase/operator/kustomization.yaml
 
 CLUSTER MANIFESTS (11):
-  - manifests/cluster/namespace.yaml
-  - manifests/cluster/cluster.yaml (3 data + 2 analytics nodes)
-  - manifests/cluster/buckets.yaml (3 buckets: performance, test, cache)
-  - manifests/cluster/users.yaml (4 users + RBAC)
-  - manifests/cluster/replication.yaml (XDCR configuration)
-  - manifests/cluster/backup.yaml (S3-compatible backups)
-  - manifests/cluster/network-policy.yaml (Security policies)
-  - manifests/cluster/routes.yaml (OpenShift routes)
-  - manifests/cluster/resource-limits.yaml (Quotas & limits)
-  - manifests/cluster/example-client.yaml (Client example)
-  - manifests/cluster/kustomization.yaml
+  - manifests/couchbase/cluster/namespace.yaml
+  - manifests/couchbase/cluster/cluster.yaml (3 data + 2 analytics nodes)
+  - manifests/couchbase/cluster/buckets.yaml (3 buckets: performance, test, cache)
+  - manifests/couchbase/cluster/users.yaml (4 users + RBAC)
+  - manifests/couchbase/cluster/replication.yaml (XDCR configuration)
+  - manifests/couchbase/cluster/backup.yaml (S3-compatible backups)
+  - manifests/couchbase/cluster/network-policy.yaml (Security policies)
+  - manifests/couchbase/cluster/routes.yaml (OpenShift routes)
+  - manifests/couchbase/cluster/resource-limits.yaml (Quotas & limits)
+  - manifests/couchbase/cluster/example-client.yaml (Client example)
+  - manifests/couchbase/cluster/kustomization.yaml
 
 MONITORING MANIFESTS (5):
-  - manifests/monitoring/service-monitor.yaml
-  - manifests/monitoring/pod-monitor.yaml
-  - manifests/monitoring/prometheus-rules.yaml (8 alert rules)
-  - manifests/monitoring/grafana-dashboard.yaml
-  - manifests/monitoring/kustomization.yaml
+  - manifests/couchbase/monitoring/service-monitor.yaml
+  - manifests/couchbase/monitoring/pod-monitor.yaml
+  - manifests/couchbase/monitoring/prometheus-rules.yaml (8 alert rules)
+  - manifests/couchbase/monitoring/grafana-dashboard.yaml
+  - manifests/couchbase/monitoring/kustomization.yaml
 
 ARGOCD ROOT & AUTOMATION (6):
   - app-of-apps.yaml (Root Application)

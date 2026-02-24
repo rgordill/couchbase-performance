@@ -21,20 +21,24 @@ spec:
       containers:
         - name: benchmark
           image: quay.io/rgordill/couchbase-perftest:latest
-          imagePullPolicy: IfNotPresent
+          imagePullPolicy: Always
           command: ["/bin/sh", "-c"]
           args:
             - |
-              exec cbc-pillowfight \
-                -U "couchbase://${CB_HOST}/${CB_BUCKET}" \
-                -u "${CB_USER}" \
-                -P "${CB_PASSWORD}" \
+              cbc-pillowfight \
+                -U "couchbase://$(CB_HOST)/$(CB_BUCKET)" \
+                -u "$(CB_USER)" \
+                -P "$(CB_PASSWORD)" \
+                --batch-size 1 \
+                --num-cycles 100000 \
                 --num-items 100000 \
-                --num-threads 8 \
-                --min-size 512 \
-                --max-size 8192 \
+                --num-threads 1 \
+                --min-size 1024 \
+                --max-size 1024 \
                 --set-pct 10 \
-                --json
+                --timings \
+                --timings \
+                --json 2> /tmp/stderr.txt
           env:
             - name: CB_HOST
               value: "couchbase-cluster"
@@ -52,5 +56,5 @@ spec:
               cpu: 200m
               memory: 256Mi
             limits:
-              cpu: "2"
-              memory: 512Mi
+              cpu: "4"
+              memory: 8Gi

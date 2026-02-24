@@ -2,8 +2,8 @@
 description: Couchbase Autonomous Operator deployment best practices and version compatibility
 globs:
   - "**/couchbase*.yaml"
-  - "**/manifests/cluster/**"
-  - "**/manifests/operator/**"
+  - "**/manifests/couchbase/cluster/**"
+  - "**/manifests/couchbase/operator/**"
 alwaysApply: false
 ---
 

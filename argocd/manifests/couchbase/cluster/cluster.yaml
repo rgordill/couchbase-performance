@@ -1,0 +1,124 @@
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: cb-admin-auth
+  namespace: couchbase
+type: Opaque
+stringData:
+  username: Administrator
+  password: P@ssw0rd123!
+---
+apiVersion: couchbase.com/v2
+kind: CouchbaseCluster
+metadata:
+  name: couchbase-cluster
+  namespace: couchbase
+spec:
+  image: registry.connect.redhat.com/couchbase/server:8.0.0
+  antiAffinity: true
+  
+  security:
+    adminSecret: cb-admin-auth
+    rbac:
+      managed: true
+    
+  networking:
+    exposeAdminConsole: true
+    adminConsoleServices:
+      - data
+    adminConsoleServiceTemplate:
+      spec:
+        type: ClusterIP   # Admin UI; expose via Ingress (omit externalTrafficPolicy for ClusterIP)
+    # Empty: no per-pod services (couchbase-cluster-0000, etc.), so no externalTrafficPolicy: Local conflict with ClusterIP.
+    # Operator creates headless couchbase-cluster-srv (data nodes only) for SRV discovery; keep as-is for client bootstrap.
+    # For load-balanced KV access to data nodes only, use the cluster-kv Service (ClusterIP).
+    # To re-enable per-pod NodePort exposure, set exposedFeatures: [client] and exposedFeatureServiceTemplate.spec.type: NodePort.
+    exposedFeatures: []
+  
+  # Native Prometheus metrics (Server 7.0+) via dedicated Service + ServiceMonitor.
+  # Do not enable the deprecated exporter sidecar (monitoring.prometheus.enabled).
+  # See argocd/manifests/couchbase/monitoring/ and https://docs.couchbase.com/operator/current/howto-prometheus.html
+  
+  cluster:
+    dataServiceMemoryQuota: 2Gi
+    indexServiceMemoryQuota: 1Gi
+    searchServiceMemoryQuota: 1Gi
+    eventingServiceMemoryQuota: 1Gi
+    analyticsServiceMemoryQuota: 1Gi
+    indexStorageSetting: plasma
+    indexer:
+      storageMode: plasma
+    autoCompaction:
+      databaseFragmentationThreshold:
+        percent: 30
+      viewFragmentationThreshold:
+        percent: 30
+      tombstonePurgeInterval: 72h
+    autoFailoverTimeout: 10s
+    autoFailoverMaxCount: 3
+    autoFailoverOnDataDiskIssues: true
+    autoFailoverOnDataDiskIssuesTimePeriod: 120s
+    autoFailoverServerGroup: false
+  
+  buckets:
+    managed: true
+  
+  # volumeClaimTemplates must be at spec level; volumeMounts reference these by name.
+  volumeClaimTemplates:
+    - metadata:
+        name: couchbase
+      spec:
+        storageClassName: "ocs-storagecluster-ceph-rbd"
+        accessModes:
+          - ReadWriteOnce
+        resources:
+          requests:
+            storage: 50Gi
+  
+  servers:
+    - name: data
+      size: 1
+      services:
+        - data
+        - index
+        - query
+      volumeMounts:
+        logs: couchbase
+      resources:
+        requests:
+          cpu: 2
+          memory: 4Gi
+        limits:
+          cpu: 4
+          memory: 8Gi
+
+    - name: query
+      size: 1
+      services:
+        - index
+        - query
+      volumeMounts:
+        logs: couchbase
+      resources:
+        requests:
+          cpu: 2
+          memory: 4Gi
+        limits:
+          cpu: 4
+          memory: 8Gi
+
+    - name: analytics
+      size: 1
+      services:
+        - analytics
+        - eventing
+      volumeMounts:
+        logs: couchbase
+      resources:
+        requests:
+          cpu: 1
+          memory: 2Gi
+        limits:
+          cpu: 2
+          memory: 4Gi

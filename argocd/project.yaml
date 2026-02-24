@@ -1,0 +1,58 @@
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: couchbase-performance
+  namespace: openshift-gitops
+spec:
+  description: Project for couchbase performance applications
+
+  # --- Allowed Git repositories ---
+  sourceRepos:
+    - https://github.com/rgordill/couchbase-performance.git
+    - https://couchbase-partners.github.io/helm-charts/
+
+  # --- Allowed deployment destinations ---
+  destinations:
+    - namespace: couchbase
+      server: https://kubernetes.default.svc
+
+  # # --- Optional: restrict what kinds of resources can be deployed ---
+  # clusterResourceWhitelist:
+  #   - group: ""
+  #     kind: Namespace
+  #   - group: "rbac.authorization.k8s.io"
+  #     kind: ClusterRole
+
+  # # namespaceResourceWhitelist:
+  #   - group: ""
+  #     kind: ConfigMap
+  #   - group: apps
+  #     kind: Deployment
+  #   - group: apps
+  #     kind: StatefulSet
+
+  # # --- Optional: deny certain resources ---
+  # namespaceResourceBlacklist:
+  #   - group: ""
+  #     kind: Secret
+
+  # # --- Optional: sync windows (maintenance windows) ---
+  # syncWindows:
+  #   - kind: allow
+  #     schedule: "Mon-Fri 08:00-18:00"
+  #     duration: 10h
+  #     applications:
+  #       - "*"
+  #     namespaces:
+  #       - "*"
+  #     clusters:
+  #       - "*"
+
+  # # --- Optional: roles for RBAC inside the project ---
+  # roles:
+  #   - name: deployer
+  #     description: Can sync apps in this project
+  #     policies:
+  #       - p, proj:platform-team:deployer, applications, sync, platform-team/*, allow
+  #     groups:
+  #       - platform-deployers

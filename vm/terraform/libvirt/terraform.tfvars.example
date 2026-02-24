@@ -1,0 +1,13 @@
+# Libvirt: path or filename of RHEL 10.1 qcow2 (filename => /var/lib/libvirt/images/<name>)
+libvirt_base_image   = "rhel-10.1-x86_64-kvm.qcow2"
+libvirt_pool        = "default"
+libvirt_network_name = "default"
+
+# SSH: when using Ansible, ssh_public_key is passed from vault (provisioner ~/.ssh/id_rsa.pub). For CLI, set here for cloud-user.
+# ssh_public_key = "ssh-rsa AAAAB3... user@host"
+
+# Couchbase minimum production (https://docs.couchbase.com/server/current/install/pre-install.html)
+vm_name    = "couchbase-vm"
+vcpu       = 2
+memory_mib = 4096
+disk_gib   = 16

@@ -17,7 +17,7 @@ This guide explains how to customize the Couchbase deployment for your specific 
 
 ### Storage Class
 
-Update the `storageClassName` in `manifests/cluster/cluster.yaml`:
+Update the `storageClassName` in `manifests/couchbase/cluster/cluster.yaml`:
 
 ```yaml
 volumeClaimTemplates:
@@ -35,7 +35,7 @@ Common OpenShift storage classes:
 
 ### Node Sizing
 
-Adjust node resources in `manifests/cluster/cluster.yaml`:
+Adjust node resources in `manifests/couchbase/cluster/cluster.yaml`:
 
 ```yaml
 servers:
@@ -56,7 +56,7 @@ servers:
 
 ### Memory Quotas
 
-Set service memory quotas in `manifests/cluster/cluster.yaml`:
+Set service memory quotas in `manifests/couchbase/cluster/cluster.yaml`:
 
 ```yaml
 cluster:
@@ -69,7 +69,7 @@ cluster:
 
 ### Ingress and cluster domain
 
-Cluster domain and TLS for Ingress are configured in `manifests/cluster/ingress.yaml`:
+Cluster domain and TLS for Ingress are configured in `manifests/couchbase/cluster/ingress.yaml`:
 
 - **Cluster domain**: `apps.ocp.sa-iberia.lab.eng.brq2.redhat.com`
 - **Admin UI (edge termination)**: `couchbase-admin.apps.ocp.sa-iberia.lab.eng.brq2.redhat.com` — TLS at ingress; a Certificate in `certificate-admin.yaml` uses ClusterIssuer `lab-ca-issuer` to create the secret referenced by the Ingress so OpenShift can create the Route.
@@ -88,7 +88,7 @@ Ensure the ClusterIssuer `lab-ca-issuer` exists in the cluster. Passthrough Ingr
 
 ### Create Additional Buckets
 
-Add more buckets in `manifests/cluster/buckets.yaml`:
+Add more buckets in `manifests/couchbase/cluster/buckets.yaml`:
 
 ```yaml
 ---
@@ -134,7 +134,7 @@ minimumDurability: majorityAndPersistActive  # Options:
 
 ### Create Application Users
 
-Add users in `manifests/cluster/users.yaml`:
+Add users in `manifests/couchbase/cluster/users.yaml`:
 
 ```yaml
 ---
@@ -197,13 +197,13 @@ spec:
 
 Monitoring uses **Couchbase Server native Prometheus metrics** (Server 7.0+) as recommended in the [official guide](https://docs.couchbase.com/operator/current/howto-prometheus.html). The deprecated exporter sidecar is not used.
 
-- **Metrics Service** (`manifests/monitoring/couchbase-metrics-service.yaml`): A dedicated Service targeting the admin port 8091 on Couchbase server pods, with label `app.couchbase.com/name: couchbase` for ServiceMonitor selection. One service per cluster; Couchbase exposes a Prometheus-compatible endpoint on each pod.
-- **ServiceMonitor** (`manifests/monitoring/service-monitor.yaml`): Directs Prometheus to scrape the metrics Service with `basicAuth` using the cluster admin Secret (`cb-admin-auth`). Includes `namespaceSelector.matchNames: [couchbase]`. If your Prometheus runs in another namespace (e.g. `monitoring`), ensure its `serviceMonitorNamespaceSelector` includes `couchbase`, or move the ServiceMonitor to the Prometheus namespace and keep `namespaceSelector` pointing at `couchbase`.
+- **Metrics Service** (`manifests/couchbase/monitoring/couchbase-metrics-service.yaml`): A dedicated Service targeting the admin port 8091 on Couchbase server pods, with label `app.couchbase.com/name: couchbase` for ServiceMonitor selection. One service per cluster; Couchbase exposes a Prometheus-compatible endpoint on each pod.
+- **ServiceMonitor** (`manifests/couchbase/monitoring/service-monitor.yaml`): Directs Prometheus to scrape the metrics Service with `basicAuth` using the cluster admin Secret (`cb-admin-auth`). Includes `namespaceSelector.matchNames: [couchbase]`. If your Prometheus runs in another namespace (e.g. `monitoring`), ensure its `serviceMonitorNamespaceSelector` includes `couchbase`, or move the ServiceMonitor to the Prometheus namespace and keep `namespaceSelector` pointing at `couchbase`.
 - **TLS**: If the Couchbase admin console uses TLS, use port **18091** in the metrics Service and add `tlsConfig: {}` (or appropriate [SafeTLSConfig](https://prometheus-operator.dev/docs/api-reference/api/#monitoring.coreos.com/v1.SafeTLSConfig)) to the ServiceMonitor endpoint.
 
 ### Adjust Scrape Intervals
 
-Edit `manifests/monitoring/service-monitor.yaml` (Couchbase cluster endpoint):
+Edit `manifests/couchbase/monitoring/service-monitor.yaml` (Couchbase cluster endpoint):
 
 ```yaml
 endpoints:
@@ -214,7 +214,7 @@ endpoints:
 
 ### Custom Prometheus Rules
 
-Add custom alerts in `manifests/monitoring/prometheus-rules.yaml`:
+Add custom alerts in `manifests/couchbase/monitoring/prometheus-rules.yaml`:
 
 ```yaml
 - alert: MyCustomAlert
@@ -231,7 +231,7 @@ Add custom alerts in `manifests/monitoring/prometheus-rules.yaml`:
 
 Import dashboards:
 1. Access Grafana in OpenShift Console
-2. Import dashboard JSON from `manifests/monitoring/grafana-dashboard.yaml`
+2. Import dashboard JSON from `manifests/couchbase/monitoring/grafana-dashboard.yaml`
 3. Select Prometheus datasource
 
 ## Performance Tuning
@@ -448,9 +448,9 @@ OpenShift creates a Route from the `couchbase-admin-ui` Ingress when the Ingress
    ```bash
    kubectl get ingressclass
    ```
-   Use the name of the default class (or the one backed by the IngressController). The manifests use `openshift-default`; if your cluster uses a different name (e.g. `openshift`), set `spec.ingressClassName` in `manifests/cluster/ingress.yaml` to that value.
+   Use the name of the default class (or the one backed by the IngressController). The manifests use `openshift-default`; if your cluster uses a different name (e.g. `openshift`), set `spec.ingressClassName` in `manifests/couchbase/cluster/ingress.yaml` to that value.
 
-2. **TLS secret must exist** for edge termination. The secret `couchbase-admin-tls` is created by the Certificate in `manifests/cluster/certificate-admin.yaml` (cert-manager). Ensure the Certificate is applied and the ClusterIssuer `lab-ca-issuer` exists. Until the secret exists, the controller may not create the Route. Check:
+2. **TLS secret must exist** for edge termination. The secret `couchbase-admin-tls` is created by the Certificate in `manifests/couchbase/cluster/certificate-admin.yaml` (cert-manager). Ensure the Certificate is applied and the ClusterIssuer `lab-ca-issuer` exists. Until the secret exists, the controller may not create the Route. Check:
    ```bash
    kubectl get certificate -n couchbase couchbase-admin-tls
    kubectl get secret -n couchbase couchbase-admin-tls

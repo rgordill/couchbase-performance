@@ -24,10 +24,11 @@ couchbase-performance/
 │   │   ├── couchbase-operator-app.yaml
 │   │   ├── couchbase-cluster-app.yaml
 │   │   └── couchbase-monitoring-app.yaml
-│   ├── manifests/                       # Kubernetes resources
-│   │   ├── operator/                    # Operator installation
-│   │   ├── cluster/                     # Cluster configuration
-│   │   └── monitoring/                  # Prometheus integration
+│   ├── manifests/
+│   │   └── couchbase/                   # Couchbase Kubernetes resources
+│   │       ├── operator/                # Operator installation
+│   │       ├── cluster/                 # Cluster configuration
+│   │       └── monitoring/              # Prometheus integration
 │   ├── deploy.sh                        # Deployment script
 │   ├── cleanup.sh                       # Cleanup script
 │   ├── verify.sh                        # Verification script
@@ -104,7 +105,7 @@ Password: P@ssw0rd123!
 
 ### Grafana Dashboards
 
-Import the provided dashboard from `argocd/manifests/monitoring/grafana-dashboard.yaml`
+Import the provided dashboard from `argocd/manifests/couchbase/monitoring/grafana-dashboard.yaml`
 
 ## 🌐 Access
 
@@ -116,7 +117,7 @@ Import the provided dashboard from `argocd/manifests/monitoring/grafana-dashboar
 
 ### Customize Cluster Size
 
-Edit `argocd/manifests/cluster/cluster.yaml`:
+Edit `argocd/manifests/couchbase/cluster/cluster.yaml`:
 
 ```yaml
 servers:
@@ -136,7 +137,7 @@ cluster:
 
 ### Add Custom Buckets
 
-Edit `argocd/manifests/cluster/buckets.yaml` or add new bucket definitions.
+Edit `argocd/manifests/couchbase/cluster/buckets.yaml` or add new bucket definitions.
 
 **See detailed configuration guide**: `argocd/CONFIGURATION.md`
 
@@ -188,7 +189,7 @@ kubectl rollout restart statefulset -n couchbase -l app=couchbase
 
 ### Automated Backups
 
-Configured in `argocd/manifests/cluster/backup.yaml`:
+Configured in `argocd/manifests/couchbase/cluster/backup.yaml`:
 
 - **Full backup**: Weekly (Sunday 2 AM)
 - **Incremental backup**: Daily (Monday-Saturday 2 AM)

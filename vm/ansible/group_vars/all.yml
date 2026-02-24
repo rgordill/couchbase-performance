@@ -1,0 +1,28 @@
+---
+# Path to Terraform project: vm/terraform/libvirt or vm/terraform/aws (chosen by backend)
+terraform_project_path: "{{ playbook_dir }}/../../terraform/{{ backend }}"
+
+# SSH public key: from vault (provisioner host ~/.ssh/id_rsa.pub); passed to Terraform
+ssh_public_key: "{{ vault_ssh_public_key }}"
+
+# Backend: libvirt or aws
+backend: libvirt
+
+# Couchbase minimum production (pre-install docs)
+vm_name: couchbase-vm
+vcpu: 2
+memory_mib: 4096
+disk_gib: 16
+
+# Libvirt
+libvirt_uri: "qemu:///system"
+libvirt_base_image: rhel-10.1-x86_64-kvm.qcow2
+libvirt_pool: default
+libvirt_network_name: default
+
+# AWS (used when backend is aws)
+aws_region: us-east-2
+aws_ami_id: ami-0886072325c42ee75
+aws_instance_type: t3.medium
+aws_key_name: ""
+aws_subnet_id: ""

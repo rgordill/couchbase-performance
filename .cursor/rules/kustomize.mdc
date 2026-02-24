@@ -1,0 +1,98 @@
+---
+description: Kustomize best practices; avoid deprecated fields and use current API
+globs: "**/kustomization.yaml"
+alwaysApply: false
+---
+
+# Kustomize: Avoid Deprecated Features
+
+Use current Kustomization fields. Deprecated fields produce warnings and may be removed in a future Kustomize/API version.
+
+## Use `labels`, not `commonLabels`
+
+**Deprecated:** `commonLabels`  
+**Use:** `labels` (list form with `includeSelectors` and `pairs`)
+
+```yaml
+# ✅ GOOD - labels (current)
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - resource.yaml
+labels:
+  - includeSelectors: true
+    pairs:
+      app.kubernetes.io/name: my-app
+      app.kubernetes.io/component: backend
+      app.kubernetes.io/managed-by: argocd
+```
+
+```yaml
+# ❌ BAD - deprecated commonLabels
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+commonLabels:
+  app.kubernetes.io/name: my-app
+```
+
+## Use `patches`, not `patchesJson6902` or `patchesStrategicMerge`
+
+**Deprecated:** `patchesJson6902`, `patchesStrategicMerge`  
+**Use:** `patches` (single list that supports both strategic merge and JSON6902 patches)
+
+Each entry in `patches` has an optional `target` and either `path` (file) or `patch` (inline string).
+
+```yaml
+# ✅ GOOD - patches (current), inline JSON6902
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - service.yaml
+patches:
+  - target:
+      group: monitoring.coreos.com
+      version: v1
+      kind: Service
+      name: my-service
+      namespace: my-namespace
+    patch: |-
+      - op: replace
+        path: /spec/selector
+        value:
+          app: my-app
+```
+
+```yaml
+# ❌ BAD - deprecated patchesJson6902
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+patchesJson6902:
+  - target:
+      version: monitoring.coreos.com/v1
+      kind: Service
+      name: my-service
+    patch: |-
+      - op: replace
+        path: /spec/selector
+        value: {}
+```
+
+For `target`, use `group` and `version` separately (e.g. `group: monitoring.coreos.com`, `version: v1`), not a combined `version: monitoring.coreos.com/v1`.
+
+## Migration
+
+Run in the directory containing `kustomization.yaml`:
+
+```bash
+kustomize edit fix
+```
+
+This updates deprecated fields to the current form. Review the diff and commit.
+
+## Summary
+
+| Deprecated           | Use instead |
+|----------------------|-------------|
+| `commonLabels`       | `labels` (list with `includeSelectors` and `pairs`) |
+| `patchesJson6902`    | `patches` (entries with `target` + `patch` or `path`) |
+| `patchesStrategicMerge` | `patches` (entries with `path` or `patch`) |

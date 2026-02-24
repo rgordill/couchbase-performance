@@ -2,10 +2,10 @@
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
-  name: couchbase-root-app
+  name: couchbase-argocd-app
   namespace: openshift-gitops
 spec:
-  project: default
+  project: couchbase-performance
   source:
     repoURL: https://github.com/rgordill/couchbase-performance.git
     targetRevision: HEAD

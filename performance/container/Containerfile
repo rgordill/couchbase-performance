@@ -4,10 +4,10 @@
 # Base UBI 9 to match EL9 RPMs (OpenSSL 1.1); UBI 10 does not provide compat-libssl11.
 
 ARG version=3.3.18
-ARG os=rhel9
+ARG os=rhel10
 ARG arch=x86_64
 
-FROM registry.access.redhat.com/ubi9-minimal:9.7
+FROM registry.access.redhat.com/ubi10-minimal:10.1
 
 # Install runtime deps + curl/tar/rpm for download and RPM install
 RUN microdnf install -y \
@@ -16,7 +16,8 @@ RUN microdnf install -y \
     # curl \
     tar \
     # rpm \
-    compat-openssl11 \
+    procps \
+    iproute \
     && microdnf clean all \
     && rm -rf /var/cache/yum
 

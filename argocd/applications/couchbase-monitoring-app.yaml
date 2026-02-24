@@ -9,11 +9,11 @@ metadata:
   finalizers:
     - resources-finalizer.argocd.argoproj.io
 spec:
-  project: default
+  project: couchbase-performance
   source:
     repoURL: https://github.com/rgordill/couchbase-performance.git
     targetRevision: HEAD
-    path: argocd/manifests/monitoring
+    path: argocd/manifests/couchbase/monitoring
   destination:
     server: https://kubernetes.default.svc
     namespace: couchbase

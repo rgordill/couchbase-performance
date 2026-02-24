@@ -1,0 +1,21 @@
+---
+# Mirrors Terraform variables; override in group_vars or -e.
+vm_provision_backend: "{{ backend | default('libvirt') }}"
+vm_provision_vm_name: "{{ vm_name | default('couchbase-vm') }}"
+vm_provision_vcpu: "{{ vcpu | default(2) }}"
+vm_provision_memory_mib: "{{ memory_mib | default(4096) }}"
+vm_provision_disk_gib: "{{ disk_gib | default(16) }}"
+
+vm_provision_libvirt_uri: "{{ libvirt_uri | default('qemu:///system') }}"
+vm_provision_libvirt_base_image: "{{ libvirt_base_image | default('rhel-10.1-x86_64-kvm.qcow2') }}"
+vm_provision_libvirt_pool: "{{ libvirt_pool | default('default') }}"
+vm_provision_libvirt_network_name: "{{ libvirt_network_name | default('default') }}"
+
+vm_provision_aws_region: "{{ aws_region | default('us-east-2') }}"
+vm_provision_aws_ami_id: "{{ aws_ami_id | default('ami-0886072325c42ee75') }}"
+vm_provision_aws_instance_type: "{{ aws_instance_type | default('t3.medium') }}"
+vm_provision_aws_key_name: "{{ aws_key_name | default('') }}"
+vm_provision_aws_subnet_id: "{{ aws_subnet_id | default('') }}"
+
+# SSH public key from vault (provisioner ~/.ssh/id_rsa.pub); passed to Terraform for cloud-user (libvirt) / ec2-user (AWS)
+vm_provision_ssh_public_key: "{{ ssh_public_key | default('') }}"

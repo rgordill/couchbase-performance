@@ -1,0 +1,18 @@
+# Grafana Operator Helm values (OCI chart).
+# See: https://grafana.github.io/grafana-operator/docs/installation/helm/
+# Grafana instances, dashboards, and data sources are managed via CRs (e.g. in this repo or separate apps).
+
+# OpenShift: enable Route RBAC and OpenShift-specific behavior
+isOpenShift: true
+
+# Optional: restrict operator to specific namespaces (e.g. "grafana,couchbase")
+# watchNamespaces: ""
+
+# Optional: enable ServiceMonitor for Prometheus (user-workload monitoring)
+# serviceMonitor:
+#   enabled: true
+#   interval: 1m
+
+# Optional: operator metrics dashboard ConfigMap
+# dashboard:
+#   enabled: true

@@ -150,7 +150,7 @@ spec:
       helm:
         releaseName: my-release
         valueFiles:
-          - $values/values.yaml
+          - $values/argocd/helm/my-app/values.yaml
     - repoURL: https://github.com/org/repo.git
       targetRevision: HEAD
       ref: values
@@ -184,6 +184,10 @@ spec:
         image: { repository: ..., tag: ... }
         # many more keys...
 ```
+
+### Kustomize
+
+Follow **`.cursor/rules/kustomize.mdc`** for all Kustomize usage (use `labels` and `patches`; avoid deprecated `commonLabels`, `patchesJson6902`, `patchesStrategicMerge`).
 
 ### Environment-Specific Configuration
 
@@ -241,6 +245,8 @@ spec:
 
 # ❌ BAD - Helm wrapper chart in Git (Chart.yaml with dependency on upstream chart)
 # Use two sources instead: one for the chart, one for the values (ref + $values/...)
+
+# ❌ BAD - Kustomize: avoid deprecated commonLabels/patchesJson6902/patchesStrategicMerge (see .cursor/rules/kustomize.mdc)
 ```
 
 ## Documentation

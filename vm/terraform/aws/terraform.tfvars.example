@@ -1,0 +1,12 @@
+# AWS: RHEL 10.1 AMI in us-east-2
+aws_region        = "us-east-2"
+aws_ami_id        = "ami-0886072325c42ee75"
+aws_instance_type = "t3.medium"
+aws_key_name      = "my-key" # required for SSH
+aws_subnet_id     = ""      # optional; default VPC used if empty
+
+# Couchbase minimum production (https://docs.couchbase.com/server/current/install/pre-install.html)
+vm_name    = "couchbase-vm"
+vcpu       = 2
+memory_mib = 4096
+disk_gib   = 16

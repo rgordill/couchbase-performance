@@ -6,7 +6,7 @@ This directory contains ArgoCD Application manifests for deploying Couchbase on 
 
 ## Operator installation (Helm)
 
-The Couchbase operator is installed via the **official Helm chart** ([Helm setup guide](https://docs.couchbase.com/operator/current/helm-setup-guide.html)), not OLM. The chart deploys the Kubernetes Operator and the Admission Controller; the Couchbase cluster itself is managed by manifests in `manifests/cluster/`.
+The Couchbase operator is installed via the **official Helm chart** ([Helm setup guide](https://docs.couchbase.com/operator/current/helm-setup-guide.html)), not OLM. The chart deploys the Kubernetes Operator and the Admission Controller; the Couchbase cluster itself is managed by manifests in `manifests/couchbase/cluster/`.
 
 - **Chart repo**: `https://couchbase-partners.github.io/helm-charts/`
 - **Values**: OpenShift-specific values (Red Hat Container Catalog images, image pull secret) are in `helm/openshift-values.yaml`. For ArgoCD the same values are embedded in the operator Application.
@@ -26,7 +26,7 @@ By default on OpenShift, users may not have permission to create or modify Couch
 ## Cluster domain and TLS
 
 - **Cluster domain**: `apps.ocp.sa-iberia.lab.eng.brq2.redhat.com`
-- **Ingress**: `manifests/cluster/ingress.yaml` — Admin UI uses edge termination with `cert-manager.io/cluster-issuer: lab-ca-issuer`; client uses passthrough. For edge or reencrypt Ingress, always set the cert-manager cluster-issuer annotation to `lab-ca-issuer`.
+- **Ingress**: `manifests/couchbase/cluster/ingress.yaml` — Admin UI uses edge termination with `cert-manager.io/cluster-issuer: lab-ca-issuer`; client uses passthrough. For edge or reencrypt Ingress, always set the cert-manager cluster-issuer annotation to `lab-ca-issuer`.
 
 ## Architecture
 
@@ -36,6 +36,7 @@ The deployment consists of multiple ArgoCD Applications organized in an App of A
 2. **couchbase-operator**: Couchbase Autonomous Operator
 3. **couchbase-cluster**: Couchbase cluster resources (databases, buckets, etc.)
 4. **couchbase-monitoring**: ServiceMonitor for Prometheus user-workload-monitoring
+5. **grafana-operator**: Grafana Operator (Helm OCI chart); manages Grafana instances, dashboards, and data sources via CRs
 
 ## Prerequisites
 
@@ -149,9 +150,9 @@ Edit values in the manifests under `manifests/` directory. ArgoCD will automatic
 
 ### Common Customizations
 
-1. **Cluster Size**: Edit `manifests/cluster/cluster.yaml` → `spec.servers[].size`
-2. **Bucket Memory**: Edit `manifests/cluster/buckets.yaml` → `spec.memoryQuota`
-3. **Monitoring Interval**: Edit `manifests/monitoring/service-monitor.yaml` → `spec.endpoints[].interval`
+1. **Cluster Size**: Edit `manifests/couchbase/cluster/cluster.yaml` → `spec.servers[].size`
+2. **Bucket Memory**: Edit `manifests/couchbase/cluster/buckets.yaml` → `spec.memoryQuota`
+3. **Monitoring Interval**: Edit `manifests/couchbase/monitoring/service-monitor.yaml` → `spec.endpoints[].interval`
 
 ## Troubleshooting
 

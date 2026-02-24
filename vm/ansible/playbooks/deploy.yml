@@ -1,0 +1,7 @@
+---
+- name: Provision Couchbase VM (Terraform)
+  hosts: terraform_runner
+  gather_facts: false
+
+  roles:
+    - role: vm_provision

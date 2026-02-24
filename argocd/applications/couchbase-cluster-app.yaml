@@ -7,11 +7,11 @@ metadata:
   annotations:
     argocd.argoproj.io/sync-wave: "2"
 spec:
-  project: default
+  project: couchbase-performance
   source:
     repoURL: https://github.com/rgordill/couchbase-performance.git
     targetRevision: HEAD
-    path: argocd/manifests/cluster
+    path: argocd/manifests/couchbase/cluster
   destination:
     server: https://kubernetes.default.svc
     namespace: couchbase

@@ -1,0 +1,18 @@
+---
+# Kustomization file for monitoring
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: couchbase
+
+resources:
+  - couchbase-metrics-service.yaml
+  - service-monitor.yaml
+
+# Add metadata labels only; do not add them to selectors (Couchbase pod selector must stay as in base)
+labels:
+  - includeSelectors: false
+    pairs:
+      app.kubernetes.io/name: couchbase-monitoring
+      app.kubernetes.io/component: monitoring
+      app.kubernetes.io/managed-by: argocd

@@ -10,7 +10,7 @@ This document summarizes the review of the couchbase-performance project against
 
 | Rule | Status | Location |
 |------|--------|----------|
-| Use Ingress instead of Routes | ✅ | `argocd/manifests/cluster/ingress.yaml` uses standard Ingress |
+| Use Ingress instead of Routes | ✅ | `argocd/manifests/couchbase/cluster/ingress.yaml` uses standard Ingress |
 | OpenShift annotations for termination | ✅ | `route.openshift.io/termination: edge/passthrough` present |
 | Nginx annotations commented out | ✅ | Commented with "uncomment if needed" |
 | Docs and scripts prefer kubectl (Kubernetes CLI); oc only when OpenShift-specific | ✅ | .cursor/rules/kubernetes.mdc; deploy.sh, verify.sh, cleanup.sh |
@@ -106,13 +106,13 @@ Reference: https://docs.couchbase.com/operator/current/prerequisite-and-setup.ht
 1. **deploy.sh**  
    - Before applying, substitute `namespace: argocd` with `namespace: ${ARGOCD_NAMESPACE}` in app-of-apps.yaml, applications/*.yaml, and applicationset.yaml so OpenShift uses `openshift-gitops`.
 
-2. **argocd/manifests/cluster/cluster.yaml**  
+2. **argocd/manifests/couchbase/cluster/cluster.yaml**  
    - `image: couchbase/server:7.2.4` → `couchbase/server:7.6.8` (Couchbase compatibility rules).
 
-3. **argocd/manifests/cluster/backup.yaml**  
+3. **argocd/manifests/couchbase/cluster/backup.yaml**  
    - CronJob image `couchbase/operator-backup:1.3.0` → `couchbase/operator-backup:1.5.0`.
 
-4. **argocd/manifests/operator/subscription.yaml**  
+4. **argocd/manifests/couchbase/operator/subscription.yaml**  
    - `installPlanApproval: Automatic` → `installPlanApproval: Manual` with comment for production.
 
 5. **argocd/applications/couchbase-operator-app.yaml**  

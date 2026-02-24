@@ -83,6 +83,10 @@ Sensitive data includes:
 cloud_init_ssh_pubkey: "{{ vault_ssh_public_key }}"
 ```
 
+### VM SSH Key (vm/ansible)
+
+- **SSH key**: Use the provisioner host’s public key at `~/.ssh/id_rsa.pub` as the value for **`vault_ssh_public_key`** in `group_vars/vault.yml`. Expose it as `ssh_public_key` (e.g. `ssh_public_key: "{{ vault_ssh_public_key }}"`) and pass it to Terraform so libvirt (cloud-user) and AWS (ec2-user) can use it. See `.cursor/rules/vm.mdc` for VM user conventions.
+
 ### Vault Usage
 
 ```bash

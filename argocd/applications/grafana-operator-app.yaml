@@ -1,0 +1,53 @@
+---
+# Grafana Operator via Helm (https://grafana.github.io/helm-charts).
+# See: https://grafana.com/docs/grafana/latest/as-code/infrastructure-as-code/grafana-operator/
+# Same approach as couchbase-operator: chart from Helm repo, values from Git (two sources).
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: grafana-operator
+  namespace: openshift-gitops
+  annotations:
+    argocd.argoproj.io/sync-wave: "2"
+spec:
+  project: couchbase-performance
+  sources:
+    - repoURL: https://grafana.github.io/helm-charts
+      chart: grafana-operator
+      targetRevision: "5.21.4"
+      helm:
+        releaseName: grafana-operator
+        valueFiles:
+          - $values/argocd/manifests/grafana/operator/values.yaml
+
+    - repoURL: https://github.com/rgordill/couchbase-performance.git
+      targetRevision: HEAD
+      path: argocd/manifests/grafana/operator
+      ref: values
+
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: grafana
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+      allowEmpty: false
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=false
+    retry:
+      limit: 5
+      backoff:
+        duration: 5s
+        factor: 2
+        maxDuration: 3m
+  ignoreDifferences:
+    - group: admissionregistration.k8s.io
+      kind: MutatingWebhookConfiguration
+      jqPathExpressions:
+        - '.webhooks[]?.clientConfig.caBundle'
+    - group: admissionregistration.k8s.io
+      kind: ValidatingWebhookConfiguration
+      jqPathExpressions:
+        - '.webhooks[]?.clientConfig.caBundle'

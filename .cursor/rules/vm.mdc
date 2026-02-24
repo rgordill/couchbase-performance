@@ -1,0 +1,22 @@
+# VM Provisioning (vm/terraform and vm/ansible)
+
+## SSH Key and Vault
+
+- **SSH public key** must come from the **provisioner host** at `~/.ssh/id_rsa.pub` (or equivalent).
+- The key is stored as an **Ansible Vault** variable and passed through to Terraform; it is not committed in plain text.
+- In **Ansible** (`vm/ansible/`):
+  - Vault variable: **`vault_ssh_public_key`** — content of the provisioner’s SSH public key (e.g. from `~/.ssh/id_rsa.pub`).
+  - Reference in `group_vars/all.yml`: `ssh_public_key: "{{ vault_ssh_public_key }}"`.
+  - The `vm_provision` role passes `ssh_public_key` into the Terraform module `variables` so both libvirt and AWS receive it.
+- In **Terraform**:
+  - **Libvirt** (`vm/terraform/libvirt/`): variable **`ssh_public_key`** is injected via cloud-init for the VM’s SSH user.
+  - **AWS** (`vm/terraform/aws/`): variable **`ssh_public_key`** is used to create an `aws_key_pair` when set; otherwise `aws_key_name` is used.
+
+## VM SSH Users
+
+| Backend  | SSH user   | Notes |
+|----------|------------|--------|
+| **Libvirt** | **cloud-user** | Key set via cloud-init from `ssh_public_key`. |
+| **AWS**     | **ec2-user**   | Key from provisioner via `aws_key_pair` (from `ssh_public_key`) or existing `aws_key_name`. |
+
+- Use **cloud-user** for libvirt/KVM and **ec2-user** for AWS in docs, examples, and outputs (e.g. `ssh cloud-user@<ip>` vs `ssh ec2-user@<ip>`).

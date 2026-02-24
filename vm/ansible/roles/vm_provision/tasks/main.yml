@@ -1,0 +1,32 @@
+---
+- name: Apply Terraform configuration (create/update VM)
+  cloud.terraform.terraform:
+    project_path: "{{ terraform_project_path }}"
+    state: present
+    force_init: true
+    variables:
+      vm_name: "{{ vm_provision_vm_name }}"
+      vcpu: "{{ vm_provision_vcpu }}"
+      memory_mib: "{{ vm_provision_memory_mib }}"
+      disk_gib: "{{ vm_provision_disk_gib }}"
+      ssh_public_key: "{{ vm_provision_ssh_public_key }}"
+      libvirt_uri: "{{ vm_provision_libvirt_uri }}"
+      libvirt_base_image: "{{ vm_provision_libvirt_base_image }}"
+      libvirt_pool: "{{ vm_provision_libvirt_pool }}"
+      libvirt_network_name: "{{ vm_provision_libvirt_network_name }}"
+      aws_region: "{{ vm_provision_aws_region }}"
+      aws_ami_id: "{{ vm_provision_aws_ami_id }}"
+      aws_instance_type: "{{ vm_provision_aws_instance_type }}"
+      aws_key_name: "{{ vm_provision_aws_key_name }}"
+      aws_subnet_id: "{{ vm_provision_aws_subnet_id }}"
+  register: vm_provision_terraform
+
+- name: Get Terraform outputs
+  cloud.terraform.terraform_output:
+    project_path: "{{ terraform_project_path }}"
+  register: terraform_outputs
+
+- name: Display Terraform outputs
+  ansible.builtin.debug:
+    msg: "{{ terraform_outputs.outputs }}"
+  when: terraform_outputs.outputs is defined and terraform_outputs.outputs | length > 0

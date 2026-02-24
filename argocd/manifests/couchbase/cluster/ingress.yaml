@@ -1,0 +1,61 @@
+---
+# Ingress to expose Couchbase Admin UI (edge termination: TLS at ingress, HTTP to backend).
+# OpenShift creates a Route from this Ingress when: ingressClassName matches the cluster
+# (see "kubectl get ingressclass"), host is set, backend port is by number, and for edge
+# TLS the secret exists (Certificate below creates couchbase-admin-tls via cert-manager).
+# Cluster domain: apps.ocp.sa-iberia.lab.eng.brq2.redhat.com
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: couchbase-admin-ui
+  namespace: couchbase
+  labels:
+    app: couchbase
+    couchbase_cluster: couchbase-cluster
+  annotations:
+    route.openshift.io/termination: edge
+    route.openshift.io/insecureEdgeTerminationPolicy: Redirect
+    cert-manager.io/cluster-issuer: lab-ca-issuer
+spec:
+  ingressClassName: openshift-default
+  tls:
+    # Secret created by Certificate (certificate-admin.yaml); must exist for OpenShift to create Route
+    - hosts:
+        - couchbase-admin.apps.ocp.sa-iberia.lab.eng.brq2.redhat.com
+      secretName: couchbase-admin-tls
+  rules:
+    - host: couchbase-admin.apps.ocp.sa-iberia.lab.eng.brq2.redhat.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: couchbase-cluster-ui
+                port:
+                  name: couchbase-ui
+---
+# # Ingress for client connections (SDK) with passthrough (TLS to backend; no cert-manager)
+# apiVersion: networking.k8s.io/v1
+# kind: Ingress
+# metadata:
+#   name: couchbase-client
+#   namespace: couchbase
+#   labels:
+#     app: couchbase
+#     couchbase_cluster: couchbase-cluster
+#   annotations:
+#     route.openshift.io/termination: passthrough
+# spec:
+#   ingressClassName: openshift-default
+#   rules:
+#     - host: couchbase-client.apps.ocp.sa-iberia.lab.eng.brq2.redhat.com
+#       http:
+#         paths:
+#           - path: ''
+#             pathType: ImplementationSpecific
+#             backend:
+#               service:
+#                 name: couchbase-cluster
+#                 port:
+#                   name: couchbase

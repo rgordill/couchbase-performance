@@ -224,7 +224,7 @@ make backup-now
 
 ### Scale Cluster
 
-Edit `argocd/manifests/cluster/cluster.yaml`:
+Edit `argocd/manifests/couchbase/cluster/cluster.yaml`:
 
 ```yaml
 servers:
@@ -290,7 +290,7 @@ make sync
 
 ## Next Steps
 
-1. **Change Default Passwords**: Update secrets in `argocd/manifests/cluster/users.yaml`
+1. **Change Default Passwords**: Update secrets in `argocd/manifests/couchbase/cluster/users.yaml`
 2. **Configure TLS**: Enable TLS for production use
 3. **Setup Backups**: Configure S3 credentials in backup configuration
 4. **Tune Resources**: Adjust memory and CPU based on workload
@@ -311,7 +311,7 @@ make sync
 
 Before going to production:
 
-1. Review and customize `argocd/manifests/cluster/cluster.yaml`
+1. Review and customize `argocd/manifests/couchbase/cluster/cluster.yaml`
 2. Update all passwords and secrets
 3. Configure proper storage class and sizes
 4. Set up monitoring alerts

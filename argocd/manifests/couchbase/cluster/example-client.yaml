@@ -1,0 +1,51 @@
+---
+# Example ConfigMap for application connection
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: couchbase-connection-config
+  namespace: couchbase
+data:
+  connection-string: "couchbase://couchbase-cluster"
+  bucket: "performance"
+  # For applications to connect:
+  # Use the secret 'performance-user-password' for credentials
+---
+# Example: How applications should connect to Couchbase
+apiVersion: v1
+kind: Pod
+metadata:
+  name: couchbase-client-example
+  namespace: couchbase
+  labels:
+    app: couchbase-client
+spec:
+  containers:
+    - name: client
+      image: couchbase:community-8.0.0
+      command: ["/bin/sh", "-c", "sleep 3600"]
+      env:
+        - name: CB_HOST
+          valueFrom:
+            configMapKeyRef:
+              name: couchbase-connection-config
+              key: connection-string
+        - name: CB_USER
+          value: "performance-user"
+        - name: CB_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: performance-user-password
+              key: password
+        - name: CB_BUCKET
+          valueFrom:
+            configMapKeyRef:
+              name: couchbase-connection-config
+              key: bucket
+      resources:
+        requests:
+          cpu: 100m
+          memory: 128Mi
+        limits:
+          cpu: 200m
+          memory: 256Mi
