@@ -28,11 +28,6 @@ spec:
     adminConsoleServiceTemplate:
       spec:
         type: ClusterIP   # Admin UI; expose via Ingress (omit externalTrafficPolicy for ClusterIP)
-    # Empty: no per-pod services (couchbase-cluster-0000, etc.), so no externalTrafficPolicy: Local conflict with ClusterIP.
-    # Operator creates headless couchbase-cluster-srv (data nodes only) for SRV discovery; keep as-is for client bootstrap.
-    # For load-balanced KV access to data nodes only, use the cluster-kv Service (ClusterIP).
-    # To re-enable per-pod NodePort exposure, set exposedFeatures: [client] and exposedFeatureServiceTemplate.spec.type: NodePort.
-    exposedFeatures: []
   
   # Native Prometheus metrics (Server 7.0+) via dedicated Service + ServiceMonitor.
   # Do not enable the deprecated exporter sidecar (monitoring.prometheus.enabled).
