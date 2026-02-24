@@ -10,7 +10,7 @@ metadata:
   finalizers:
     - resources-finalizer.argocd.argoproj.io
   annotations:
-    argocd.argoproj.io/sync-wave: "2"
+    argocd.argoproj.io/sync-wave: "1"
 spec:
   project: couchbase-performance
   sources:
@@ -36,7 +36,6 @@ spec:
       selfHeal: true
       allowEmpty: false
     syncOptions:
-      - CreateNamespace=true
       - ServerSideApply=false
     retry:
       limit: 5
@@ -44,12 +43,3 @@ spec:
         duration: 5s
         factor: 2
         maxDuration: 3m
-  ignoreDifferences:
-    - group: admissionregistration.k8s.io
-      kind: MutatingWebhookConfiguration
-      jqPathExpressions:
-        - '.webhooks[]?.clientConfig.caBundle'
-    - group: admissionregistration.k8s.io
-      kind: ValidatingWebhookConfiguration
-      jqPathExpressions:
-        - '.webhooks[]?.clientConfig.caBundle'

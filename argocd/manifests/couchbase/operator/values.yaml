@@ -23,5 +23,5 @@ admissionController:
     tag: "2.9.0"
 
 # if the API server still reports "certificate signed by unknown authority" (patched caBundle is ignored by Argo via ignoreDifferences).
-admissionSecret:
+admissioController:
   disableValidatingWebhook: true
