@@ -17,11 +17,9 @@ couchbaseOperator:
     tag: "2.9.0"
 
 admissionController:
+  disableValidatingWebhook: true
   scope: ClusterRole  # Validate Couchbase resources in all namespaces
   image:
     repository: registry.connect.redhat.com/couchbase/admission-controller
     tag: "2.9.0"
 
-# if the API server still reports "certificate signed by unknown authority" (patched caBundle is ignored by Argo via ignoreDifferences).
-admissioController:
-  disableValidatingWebhook: true
