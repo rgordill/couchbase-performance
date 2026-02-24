@@ -13,7 +13,7 @@ spec:
 
   # --- Allowed deployment destinations ---
   destinations:
-    - namespace: "couchbase-*"
+    - namespace: "couchbase"
       server: https://kubernetes.default.svc
 
   # --- Allow all cluster- and namespace-scoped resources (e.g. CRDs, Namespace, cluster-scoped RBAC) ---

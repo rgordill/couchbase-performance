@@ -440,6 +440,39 @@ argocd app get couchbase-cluster
 argocd app sync couchbase-cluster --force
 ```
 
+### Application not deleting (stuck in Terminating)
+
+The `couchbase-cluster` Application has the finalizer `resources-finalizer.argocd.argoproj.io`. Argo CD will **delete all managed resources** (CouchbaseCluster, Secrets, Ingress, etc.) in the destination namespace before it removes the Application. If the Application stays in `Terminating`, something in that namespace is not being removed.
+
+**Typical cause:** The **CouchbaseCluster** resource has finalizers added by the Couchbase operator so it can run teardown (scale down, cleanup). If the operator is not running, is failing, or teardown never completes, the CouchbaseCluster stays in `Terminating` and the Application cannot finish deleting.
+
+**Steps:**
+
+1. See what is still there and whether the cluster is Terminating:
+   ```bash
+   kubectl get application couchbase-cluster -n openshift-gitops -o jsonpath='{.metadata.finalizers}'
+   kubectl get couchbasecluster,pvc,pod,svc,ingress -n couchbase
+   kubectl get couchbasecluster -n couchbase -o yaml | grep -A5 finalizers
+   ```
+
+2. Ensure the **Couchbase operator** is running (it must remove its finalizers from the CouchbaseCluster for deletion to complete):
+   ```bash
+   kubectl get pods -n couchbase-operator -l app.kubernetes.io/name=couchbase-operator
+   kubectl logs -n couchbase-operator -l app.kubernetes.io/name=couchbase-operator --tail=100
+   ```
+
+3. If the CouchbaseCluster is stuck in Terminating and you have confirmed the operator cannot complete (e.g. you are intentionally tearing down and can accept data loss), you can remove the **resource’s** finalizers so the cluster object can be deleted; then Argo CD can prune the rest and remove the Application:
+   ```bash
+   kubectl patch couchbasecluster couchbase-cluster -n couchbase -p '{"metadata":{"finalizers":null}}' --type=merge
+   ```
+   Only do this if you understand the operator may not have cleaned up pods/PVCs; you may need to delete PVCs or the namespace afterward.
+
+4. If you want to delete the **Application** without waiting for resources (not recommended for normal use), remove the Application’s finalizer so the Application is removed and resources are left behind (orphaned):
+   ```bash
+   kubectl patch application couchbase-cluster -n openshift-gitops -p '{"metadata":{"finalizers":null}}' --type=merge
+   ```
+   You will then need to delete the namespace or resources in `couchbase` manually.
+
 ### Admin UI Ingress: OpenShift not creating a Route from the Ingress
 
 OpenShift creates a Route from the `couchbase-admin-ui` Ingress when the Ingress is valid and the controller admits it. If no Route appears, fix the following:

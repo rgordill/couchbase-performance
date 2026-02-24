@@ -52,12 +52,11 @@ spec:
         percent: 30
       viewFragmentationThreshold:
         percent: 30
-      tombstonePurgeInterval: 72h
+      tombstonePurgeInterval: 72h0m0s
     autoFailoverTimeout: 10s
     autoFailoverMaxCount: 3
     autoFailoverOnDataDiskIssues: true
-    autoFailoverOnDataDiskIssuesTimePeriod: 120s
-    autoFailoverServerGroup: false
+    autoFailoverOnDataDiskIssuesTimePeriod: 2m0s
   
   buckets:
     managed: true
@@ -85,10 +84,10 @@ spec:
         logs: couchbase
       resources:
         requests:
-          cpu: 2
+          cpu: '2'
           memory: 4Gi
         limits:
-          cpu: 4
+          cpu: '4'
           memory: 8Gi
 
     - name: query
@@ -100,10 +99,10 @@ spec:
         logs: couchbase
       resources:
         requests:
-          cpu: 2
+          cpu: '2'
           memory: 4Gi
         limits:
-          cpu: 4
+          cpu: '4'
           memory: 8Gi
 
     - name: analytics
@@ -115,8 +114,8 @@ spec:
         logs: couchbase
       resources:
         requests:
-          cpu: 1
+          cpu: '1'
           memory: 2Gi
         limits:
-          cpu: 2
+          cpu: '2'
           memory: 4Gi

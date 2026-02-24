@@ -16,14 +16,13 @@ spec:
     path: argocd/manifests/couchbase/cluster
   destination:
     server: https://kubernetes.default.svc
-    namespace: couchbase-dev
+    namespace: couchbase
   syncPolicy:
     automated:
       prune: true
       selfHeal: true
       allowEmpty: false
     syncOptions:
-      - CreateNamespace=true
       - ServerSideApply=true
     retry:
       limit: 5
