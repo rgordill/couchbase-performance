@@ -1,17 +1,9 @@
 # Grafana server instance + Ingress (couchbase namespace; operator must be deployed first).
-# PreSync sets cluster-configuration (ingress-domain, grafana-host) before apply; PostSync patches Ingress host.
+# Ingress host: ApplicationSet injects host via source.kustomize.patches using
+# grafana-server.<ingress-domain> from the Argo CD cluster secret annotation.
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 namespace: couchbase
 resources:
   - grafana.yaml
   - ingress.yaml
-
-vars: 
-  - name: INGRESS_DOMAIN 
-    objref: 
-      kind: ConfigMap 
-      name: cluster-info
-      apiVersion: v1
-    fieldref: 
-      fieldpath: data.ingress-domain

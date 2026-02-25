@@ -1,0 +1,60 @@
+---
+# ApplicationSet: one Application for the in-cluster (grafana-server).
+# Cluster secret has annotation ingress-domain (e.g. apps.ocp.example.com). Template builds
+# host grafana-server.<ingress-domain> and injects it via source.kustomize.patches into the Ingress.
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: grafana-server
+  namespace: openshift-gitops
+spec:
+  project: couchbase-performance
+  goTemplate: true
+  goTemplateOptions: ["missingkey=error"]
+  generators:
+    - clusters:
+        selector:
+          matchLabels:
+            argocd.argoproj.io/cluster-name: in-cluster
+  template:
+    metadata:
+      name: 'grafana-server'
+      namespace: openshift-gitops
+      annotations:
+        argocd.argoproj.io/sync-wave: "2"
+        # Host for reference: grafana-server.<ingress-domain> from cluster secret annotation.
+        ingress-host: 'grafana-server.{{ index .metadata.annotations "ingress-domain" }}'
+    spec:
+      project: couchbase-performance
+      source:
+        repoURL: https://github.com/rgordill/couchbase-performance.git
+        targetRevision: HEAD
+        path: argocd/manifests/grafana/server
+        kustomize:
+          patches:
+            - target:
+                kind: Ingress
+                name: grafana-server
+              patch: |-
+                - op: replace
+                  path: /spec/rules/0/host
+                  value: "grafana-server.{{ index .metadata.annotations "ingress-domain" }}"
+                - op: replace
+                  path: /spec/tls/0/hosts/0
+                  value: "grafana-server.{{ index .metadata.annotations "ingress-domain" }}"
+      destination:
+        server: https://kubernetes.default.svc
+        namespace: couchbase
+      syncPolicy:
+        automated:
+          prune: true
+          selfHeal: true
+          allowEmpty: false
+        syncOptions:
+          - ServerSideApply=false
+        retry:
+          limit: 5
+          backoff:
+            duration: 5s
+            factor: 2
+            maxDuration: 3m

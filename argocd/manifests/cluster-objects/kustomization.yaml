@@ -1,5 +1,5 @@
 # Cluster objects for app-of-apps (source 1): project, RBAC, PreSync hook.
-# PreSync creates ConfigMap cluster-configuration (ingress subdomain) before applications sync.
+# PreSync creates Argo CD in-cluster Secret (ingress subdomain) for ApplicationSet and grafana-server PostSync.
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 resources:

@@ -1,8 +1,8 @@
 ---
-# PreSync hook: create or patch ConfigMap cluster-configuration with ingress-controller subdomain.
-# If the ConfigMap exists, only data.ingress-domain is added/updated (other fields preserved).
-# Domain: kubectl get ingresses.config.openshift.io cluster -o jsonpath='{.spec.domain}'
-# Stored in openshift-gitops for use by other apps (e.g. Grafana ingress host).
+# PreSync: create or patch Argo CD cluster Secret for the in-cluster, with ingress subdomain.
+# The Secret is an Argo CD cluster secret (argocd.argoproj.io/secret-type: cluster) so the
+# ApplicationSet can generate one Application for this cluster. Subdomain is stored in the
+# same Secret (ingress-domain) for the grafana-server PostSync to patch the Ingress host.
 apiVersion: batch/v1
 kind: Job
 metadata:
@@ -32,16 +32,21 @@ spec:
             - |
               DOMAIN=$(kubectl get ingresses.config.openshift.io cluster -o jsonpath='{.spec.domain}' 2>/dev/null) || true
               [ -z "$DOMAIN" ] && echo "Error: No ingress domain found" && exit 1
-              if kubectl get configmap cluster-configuration -n openshift-gitops &>/dev/null; then
-                kubectl patch configmap cluster-configuration -n openshift-gitops --type=merge \
-                  -p '{"data":{"ingress-domain":"'"$DOMAIN"'"}}'
-              else
-                kubectl create configmap cluster-configuration -n openshift-gitops\
-                  --from-literal=ingress-domain="$DOMAIN"
-              fi
-              echo "cluster-configuration.ingress-domain=$DOMAIN" >&2
-          securityContext:
-            allowPrivilegeEscalation: false
-            capabilities:
-              drop:
-                - ALL
+              # Argo CD cluster secret for in-cluster (name, server). Annotation ingress-domain
+              # is used by grafana-server ApplicationSet kustomize patches to set Ingress host.
+              SECRET_NAME="openshift-gitops-cluster-configuration"
+              cat <<EOF | sed 's/^              //' | kubectl apply -n openshift-gitops -f -
+              apiVersion: v1
+              kind: Secret
+              metadata:
+                name: ${SECRET_NAME}
+                labels:
+                  argocd.argoproj.io/secret-type: cluster
+                  argocd.argoproj.io/cluster-name: in-cluster
+                annotations:
+                  ingress-domain: "${DOMAIN}"
+              type: Opaque
+              stringData:
+                name: in-cluster
+                server: https://kubernetes.default.svc
+              EOF

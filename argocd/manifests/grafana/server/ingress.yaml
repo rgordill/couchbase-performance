@@ -1,7 +1,6 @@
 ---
 # Ingress for Grafana UI (edge termination: TLS at ingress, HTTP to backend).
-# Host: grafana-couchbase.<domain>. PreSync sets cluster-configuration (ingress-domain, grafana-host)
-# in couchbase before apply; PostSync patches this Ingress with the real host (substitutes PLACEHOLDER_SUBDOMAIN).
+# Host: ApplicationSet kustomize patches replace PLACEHOLDER with grafana-server.<ingress-domain> from cluster secret annotation.
 # Backend: Service created by grafana-operator for Grafana CR "server" (port 3000).
 apiVersion: networking.k8s.io/v1
 kind: Ingress
@@ -18,10 +17,10 @@ spec:
   ingressClassName: openshift-default
   tls:
     - hosts:
-        - grafana-couchbase.$(INGRESS_DOMAIN)
+        - PLACEHOLDER
       secretName: grafana-server-tls
   rules:
-    - host: grafana-couchbase.$(INGRESS_DOMAIN)
+    - host: PLACEHOLDER
       http:
         paths:
           - path: /
