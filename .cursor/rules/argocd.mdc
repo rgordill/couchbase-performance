@@ -222,6 +222,73 @@ replacements:
           - spec.source.helm.valuesObject.grafana.ingress.hosts.[0]
 ```
 
+### Applications that deploy an Ingress (cluster-specific host)
+
+When an application deploys an **Ingress** and the host must come from the cluster (e.g. OpenShift ingress domain), use an **ApplicationSet** with the **cluster generator** and **source.kustomize.patches** to inject the host from the Argo CD cluster secret. The cluster secret must have the annotation **ingress-domain** (e.g. set by a PreSync hook from the cluster’s ingress config). Do **not** hardcode the host in the Ingress manifest; use a placeholder and patch it at sync time.
+
+1. **Cluster secret**: Ensure the in-cluster (or target cluster) Argo CD cluster Secret has `metadata.annotations["ingress-domain"]` set to the ingress domain (e.g. `apps.ocp.example.com`). A PreSync Job can set this from the cluster (e.g. OpenShift `ingresses.config.openshift.io/cluster` `.spec.domain`).
+
+2. **ApplicationSet**: Use `generators.clusters` with a selector that matches that cluster (e.g. `argocd.argoproj.io/cluster-name: in-cluster`). In the template, set `source.kustomize.patches` to a JSON patch that replaces the Ingress host and TLS host with `"<subdomain>.{{ index .metadata.annotations \"ingress-domain\" }}"` (e.g. subdomain `grafana-server`, `couchbase-admin`).
+
+3. **Ingress in Git**: In the app’s Ingress manifest, set `spec.rules[0].host` and `spec.tls[0].hosts[0]` to a placeholder (e.g. `PLACEHOLDER`). The ApplicationSet patches replace it so the deployed host is `<subdomain>.<ingress-domain>`.
+
+```yaml
+# ✅ GOOD - ApplicationSet injects Ingress host from cluster secret annotation
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: my-app
+  namespace: openshift-gitops
+spec:
+  goTemplate: true
+  goTemplateOptions: ["missingkey=error"]
+  generators:
+    - clusters:
+        selector:
+          matchLabels:
+            argocd.argoproj.io/cluster-name: in-cluster
+  template:
+    metadata:
+      name: 'my-app'
+    spec:
+      source:
+        repoURL: https://github.com/org/repo.git
+        path: argocd/manifests/my-app
+        kustomize:
+          patches:
+            - target:
+                kind: Ingress
+                name: my-app-ingress
+              patch: |-
+                - op: replace
+                  path: /spec/rules/0/host
+                  value: "my-subdomain.{{ index .metadata.annotations \"ingress-domain\" }}"
+                - op: replace
+                  path: /spec/tls/0/hosts/0
+                  value: "my-subdomain.{{ index .metadata.annotations \"ingress-domain\" }}"
+      destination:
+        server: '{{.server}}'
+        namespace: my-namespace
+```
+
+```yaml
+# ✅ GOOD - Ingress in repo uses PLACEHOLDER; ApplicationSet patches replace it
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: my-app-ingress
+spec:
+  tls:
+    - hosts: [PLACEHOLDER]
+      secretName: my-app-tls
+  rules:
+    - host: PLACEHOLDER
+      http:
+        paths: [...]
+```
+
+**Note:** The ApplicationSet cluster generator only exposes secret **metadata** (annotations, labels) and the standard data keys `name`, `server`, `project`. It does **not** expose custom secret data keys, so the ingress domain must be stored in the cluster secret’s **annotation** `ingress-domain`.
+
 ## Anti-Patterns
 
 ```yaml

@@ -3,7 +3,6 @@
 # grafana-server.<ingress-domain> from the Argo CD cluster secret annotation.
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
-namespace: couchbase
 resources:
   - grafana.yaml
   - ingress.yaml
