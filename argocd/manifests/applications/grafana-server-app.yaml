@@ -1,7 +1,5 @@
 ---
 # Grafana server instance (Grafana CR + Ingress). Requires grafana-operator to be deployed first.
-# Ingress host: var is ConfigMap ingress-domain; kustomization replacements patch the Ingress.
-# PreSync fills that ConfigMap in the cluster (application PARAM); Argo CD runs the kustomization as part of the deployment.
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:

@@ -100,8 +100,8 @@ cd argocd
 # Deploy using the script
 ./deploy.sh
 
-# OR deploy manually
-kubectl apply -f app-of-apps.yaml
+# OR deploy manually (bootstrap project + app-of-apps)
+kubectl apply -k argocd
 ```
 
 ## Step 5: Monitor Deployment

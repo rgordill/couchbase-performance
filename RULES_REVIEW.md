@@ -80,7 +80,7 @@ Reference: https://docs.couchbase.com/operator/current/prerequisite-and-setup.ht
 
 | Rule | Status | Location |
 |------|--------|----------|
-| App of Apps pattern | ✅ | app-of-apps.yaml → applications/ |
+| App of Apps pattern | ✅ | main/app-of-apps.yaml → main/ (includes applications/) |
 | Sync waves | ✅ | operator=1, cluster=2, monitoring=3 |
 | syncPolicy with prune, selfHeal | ✅ | All applications |
 | syncOptions CreateNamespace | ✅ | operator, cluster apps |
@@ -104,7 +104,7 @@ Reference: https://docs.couchbase.com/operator/current/prerequisite-and-setup.ht
 ## 5. Summary of Fixes Applied
 
 1. **deploy.sh**  
-   - Before applying, substitute `namespace: argocd` with `namespace: ${ARGOCD_NAMESPACE}` in app-of-apps.yaml, applications/*.yaml, and applicationset.yaml so OpenShift uses `openshift-gitops`.
+   - Before applying, substitute `namespace: argocd` with `namespace: ${ARGOCD_NAMESPACE}` in main/app-of-apps.yaml, main/project.yaml, applications/*.yaml, and applicationset.yaml so OpenShift uses `openshift-gitops`.
 
 2. **argocd/manifests/couchbase/cluster/cluster.yaml**  
    - `image: couchbase/server:7.2.4` → `couchbase/server:7.6.8` (Couchbase compatibility rules).

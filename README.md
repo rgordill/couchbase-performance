@@ -19,7 +19,10 @@ A complete GitOps-based Couchbase deployment solution featuring:
 ```
 couchbase-performance/
 ├── argocd/                              # ArgoCD deployment manifests
-│   ├── app-of-apps.yaml                # Root application
+│   ├── main/                            # Bootstrap: project, app-of-apps, PreSync (cluster-configuration)
+│   │   ├── app-of-apps.yaml             # Root application (syncs argocd/main)
+│   │   ├── project.yaml
+│   │   └── kustomization.yaml
 │   ├── applications/                    # Individual app definitions
 │   │   ├── couchbase-operator-app.yaml
 │   │   ├── couchbase-cluster-app.yaml
@@ -59,7 +62,7 @@ couchbase-performance/
 2. **Update repository URL** in ArgoCD manifests:
    ```bash
    export REPO_URL="https://github.com/your-org/couchbase-performance.git"
-   sed -i "s|repoURL:.*|repoURL: ${REPO_URL}|g" argocd/app-of-apps.yaml argocd/applications/*.yaml
+   sed -i "s|repoURL:.*|repoURL: ${REPO_URL}|g" argocd/main/app-of-apps.yaml argocd/applications/*.yaml
    ```
 
 3. **Deploy using the script**:

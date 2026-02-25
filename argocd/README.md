@@ -32,7 +32,7 @@ By default on OpenShift, users may not have permission to create or modify Couch
 
 The deployment consists of multiple ArgoCD Applications organized in an App of Apps pattern:
 
-1. **couchbase-root-app**: Parent application managing all child applications
+1. **couchbase-argocd-app**: App-of-apps (two sources: cluster-objects + applications)
 2. **couchbase-operator**: Couchbase Autonomous Operator
 3. **couchbase-cluster**: Couchbase cluster resources (databases, buckets, etc.)
 4. **couchbase-monitoring**: ServiceMonitor for Prometheus user-workload-monitoring
@@ -65,11 +65,14 @@ EOF
 
 ### Quick Start
 
-Deploy the root application:
+Bootstrap (apply in order):
 
 ```bash
-kubectl apply -f app-of-apps.yaml
+kubectl apply -k argocd/manifests/cluster-objects
+kubectl apply -f argocd/main/app-of-apps.yaml
 ```
+
+The app-of-apps has two sources: **manifests/cluster-objects** (project, RBAC, PreSync) and **manifests/applications** (child Applications). PreSync creates the **cluster-configuration** ConfigMap (ingress subdomain) before applications sync.
 
 ### Manual Deployment (without ArgoCD)
 
@@ -110,28 +113,33 @@ The script installs the operator via Helm (`helm/openshift-values.yaml`), then a
 ```
 argocd/
 ├── README.md                           # This file
-├── app-of-apps.yaml                    # Root ArgoCD Application
-├── applications/                       # Individual ArgoCD Applications
-│   ├── couchbase-operator-app.yaml
-│   ├── couchbase-cluster-app.yaml
-│   └── couchbase-monitoring-app.yaml
-├── helm/                               # Helm values for Couchbase operator
-│   ├── openshift-values.yaml           # Used by deploy-manual.sh
-│   ├── Chart.yaml                      # Optional umbrella chart
-│   └── values.yaml
-└── manifests/                          # Kubernetes manifests
-    ├── operator/                       # Namespace only (operator installed via Helm)
-    │   ├── namespace.yaml
-    │   └── kustomization.yaml
-    ├── cluster/                        # Couchbase cluster resources
-    │   ├── namespace.yaml
-    │   ├── cluster.yaml
-    │   ├── buckets.yaml
-    │   ├── users.yaml
-    │   └── replication.yaml
-    └── monitoring/                     # Prometheus monitoring
-        ├── service-monitor.yaml
-        └── pod-monitor.yaml
+├── main/                               # App-of-apps Application (two sources)
+│   ├── app-of-apps.yaml                # Root Application
+│   └── README.md
+├── manifests/
+│   ├── cluster-objects/                # App-of-apps source 1: project, RBAC, PreSync
+│   │   ├── project.yaml
+│   │   ├── rbac-cluster-config-hook.yaml
+│   │   ├── sync-hook-cluster-config-pre.yaml
+│   │   └── kustomization.yaml
+│   ├── applications/                   # App-of-apps source 2: child Applications
+│   │   ├── couchbase-operator-app.yaml
+│   │   ├── couchbase-cluster-app.yaml
+│   │   ├── couchbase-monitoring-app.yaml
+│   │   ├── grafana-operator-app.yaml
+│   │   ├── grafana-server-app.yaml
+│   │   └── kustomization.yaml
+│   ├── couchbase/                      # Couchbase operator, cluster, monitoring
+│   │   ├── operator/                   # Helm values (operator installed via Helm)
+│   │   ├── cluster/                    # Cluster, buckets, users, ingress
+│   │   └── monitoring/                 # ServiceMonitor, metrics
+│   └── grafana/                        # Grafana operator and server
+│       ├── operator/                   # Helm values
+│       └── server/                     # Grafana instance, ingress
+└── helm/                               # Helm values for Couchbase operator (manual deploy)
+    ├── openshift-values.yaml           # Used by deploy-manual.sh
+    ├── Chart.yaml                      # Optional umbrella chart
+    └── values.yaml
 ```
 
 ## Monitoring

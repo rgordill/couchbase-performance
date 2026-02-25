@@ -371,7 +371,7 @@ spec:
 
 Before deploying, update the repository URL in these files:
 
-1. `app-of-apps.yaml`
+1. `main/app-of-apps.yaml`
 2. `applications/couchbase-operator-app.yaml`
 3. `applications/couchbase-cluster-app.yaml`
 4. `applications/couchbase-monitoring-app.yaml`

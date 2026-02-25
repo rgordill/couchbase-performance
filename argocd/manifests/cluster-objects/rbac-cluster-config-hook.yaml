@@ -1,0 +1,96 @@
+---
+# RBAC for PreSync hook that creates ConfigMap cluster-configuration (ingress subdomain).
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: cluster-configuration-hook
+  namespace: openshift-gitops
+  labels:
+    app: argocd-main
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: cluster-configuration-ingress-reader
+  labels:
+    app: argocd-main
+rules:
+  - apiGroups: ["config.openshift.io"]
+    resources: ["ingresses"]
+    verbs: ["get"]
+    resourceNames: ["cluster"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: cluster-configuration-ingress-reader
+  labels:
+    app: argocd-main
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: cluster-configuration-ingress-reader
+subjects:
+  - kind: ServiceAccount
+    name: cluster-configuration-hook
+    namespace: openshift-gitops
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: cluster-configuration-hook
+  namespace: openshift-gitops
+  labels:
+    app: argocd-main
+rules:
+  - apiGroups: [""]
+    resources: ["configmaps"]
+    verbs: ["get", "create", "update", "patch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: cluster-configuration-hook
+  namespace: openshift-gitops
+  labels:
+    app: argocd-main
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: cluster-configuration-hook
+subjects:
+  - kind: ServiceAccount
+    name: cluster-configuration-hook
+    namespace: openshift-gitops
+---
+# Role in couchbase: ConfigMap (PreSync) and Ingress patch (PostSync).
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: cluster-configuration-hook
+  namespace: couchbase
+  labels:
+    app: argocd-main
+rules:
+  - apiGroups: [""]
+    resources: ["configmaps"]
+    verbs: ["get", "create", "update", "patch"]
+  - apiGroups: ["networking.k8s.io"]
+    resources: ["ingresses"]
+    verbs: ["get", "patch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: cluster-configuration-hook
+  namespace: couchbase
+  labels:
+    app: argocd-main
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: cluster-configuration-hook
+subjects:
+  - kind: ServiceAccount
+    name: cluster-configuration-hook
+    namespace: openshift-gitops

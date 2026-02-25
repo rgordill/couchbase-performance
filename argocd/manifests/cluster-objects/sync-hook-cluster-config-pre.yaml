@@ -1,0 +1,47 @@
+---
+# PreSync hook: create or patch ConfigMap cluster-configuration with ingress-controller subdomain.
+# If the ConfigMap exists, only data.ingress-domain is added/updated (other fields preserved).
+# Domain: kubectl get ingresses.config.openshift.io cluster -o jsonpath='{.spec.domain}'
+# Stored in openshift-gitops for use by other apps (e.g. Grafana ingress host).
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: cluster-configuration-prehook
+  namespace: openshift-gitops
+  annotations:
+    argocd.argoproj.io/hook: PreSync
+    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
+spec:
+  ttlSecondsAfterFinished: 300
+  backoffLimit: 5
+  template:
+    metadata:
+      labels:
+        app: argocd-main
+        argocd.argoproj.io/hook: "true"
+    spec:
+      serviceAccountName: cluster-configuration-hook
+      restartPolicy: OnFailure
+      containers:
+        - name: get-ingress-domain
+          # Use an image that includes /bin/sh (official kubectl image is distroless).
+          image: registry.redhat.io/openshift4/ose-cli-rhel9:v4.21
+          command:
+            - /bin/sh
+            - -ec
+            - |
+              DOMAIN=$(kubectl get ingresses.config.openshift.io cluster -o jsonpath='{.spec.domain}' 2>/dev/null) || true
+              [ -z "$DOMAIN" ] && echo "Error: No ingress domain found" && exit 1
+              if kubectl get configmap cluster-configuration -n openshift-gitops &>/dev/null; then
+                kubectl patch configmap cluster-configuration -n openshift-gitops --type=merge \
+                  -p '{"data":{"ingress-domain":"'"$DOMAIN"'"}}'
+              else
+                kubectl create configmap cluster-configuration -n openshift-gitops\
+                  --from-literal=ingress-domain="$DOMAIN"
+              fi
+              echo "cluster-configuration.ingress-domain=$DOMAIN" >&2
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL

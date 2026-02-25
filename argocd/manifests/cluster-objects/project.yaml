@@ -16,6 +16,8 @@ spec:
   destinations:
     - namespace: "couchbase"
       server: https://kubernetes.default.svc
+    - namespace: "openshift-gitops"
+      server: https://kubernetes.default.svc
 
   # --- Allow all cluster- and namespace-scoped resources (e.g. CRDs, Namespace, cluster-scoped RBAC) ---
   clusterResourceWhitelist:
