@@ -43,7 +43,7 @@ spec:
                   path: /spec/tls/0/hosts/0
                   value: "grafana-server.{{ index .metadata.annotations "ingress-domain" }}"
       destination:
-        server: https://kubernetes.default.svc
+        server: '{{.server}}'
         namespace: couchbase
       syncPolicy:
         automated:
