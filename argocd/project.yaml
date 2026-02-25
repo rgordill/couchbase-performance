@@ -10,6 +10,7 @@ spec:
   sourceRepos:
     - https://github.com/rgordill/couchbase-performance.git
     - https://couchbase-partners.github.io/helm-charts/
+    - https://grafana.github.io/helm-charts
 
   # --- Allowed deployment destinations ---
   destinations:

@@ -1,0 +1,26 @@
+# Grafana server instance + Ingress (couchbase namespace; operator must be deployed first).
+# Ingress host: var is ConfigMap ingress-domain (data.host); kustomization replacements patch the Ingress.
+# PreSync fills that ConfigMap in the cluster from OpenShift domain (application PARAM); Argo CD then runs
+# this kustomization as part of the deployment, so the applied Ingress gets the value from the var.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: couchbase
+resources:
+  - rbac-cleanup.yaml
+  - rbac-domain-hook.yaml
+  - grafana.yaml
+  - ingress.yaml
+  - sync-hook-domain-pre.yaml
+  - sync-hook-cleanup-rbac-post.yaml
+replacements:
+  - source:
+      kind: ConfigMap
+      name: ingress-domain
+      fieldPath: data.host
+    targets:
+      - select:
+          kind: Ingress
+          name: grafana-server
+        fieldPaths:
+          - spec.rules.0.host
+          - spec.tls.0.hosts.0

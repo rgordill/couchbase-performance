@@ -1,0 +1,33 @@
+---
+# Grafana server instance (Grafana CR + Ingress). Requires grafana-operator to be deployed first.
+# Ingress host: var is ConfigMap ingress-domain; kustomization replacements patch the Ingress.
+# PreSync fills that ConfigMap in the cluster (application PARAM); Argo CD runs the kustomization as part of the deployment.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: grafana-server
+  namespace: openshift-gitops
+  annotations:
+    argocd.argoproj.io/sync-wave: "2"
+spec:
+  project: couchbase-performance
+  source:
+    repoURL: https://github.com/rgordill/couchbase-performance.git
+    targetRevision: HEAD
+    path: argocd/manifests/grafana/server
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: couchbase
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+      allowEmpty: false
+    syncOptions:
+      - ServerSideApply=false
+    retry:
+      limit: 5
+      backoff:
+        duration: 5s
+        factor: 2
+        maxDuration: 3m

@@ -638,6 +638,27 @@ When you encounter OpenShift-specific resources:
 - **Cluster domain**: `apps.ocp.sa-iberia.lab.eng.brq2.redhat.com` — use subdomains (e.g. `couchbase-admin.apps.ocp.sa-iberia.lab.eng.brq2.redhat.com`) in Ingress `host` and `tls.hosts`.
 - **ClusterIssuer**: `lab-ca-issuer` for Ingress TLS (edge/reencrypt).
 
+### Ingress host from cluster default domain (OpenShift / Argo CD)
+
+Use the **PreSync** hook and the **kustomization that runs as part of the Argo CD deployment** (do not use a separate kustomize build or post-hook to patch the Ingress):
+
+1. **Var (ConfigMap)**  
+   Add a ConfigMap (e.g. `ingress-domain`) in the app directory with `data.domain` and `data.host` (e.g. `host: "app.<cluster-domain>"`). Set a default that matches the project cluster domain or use an overlay per environment. This ConfigMap is the **var** and the **application PARAM** when filled by PreSync.
+
+2. **Kustomize replacements**  
+   In the same kustomization, add `replacements` so the Ingress host comes from the ConfigMap (e.g. source: ConfigMap `ingress-domain`, `fieldPath: data.host`; targets: Ingress `spec.rules.0.host` and `spec.tls.0.hosts.0`). The kustomization that runs as part of the Argo CD deployment patches the Ingress from that var.
+
+3. **PreSync hook Job** (image: `registry.k8s.io/kubectl:latest`):  
+   Get the domain: `kubectl get ingresses.config.openshift.io cluster -o jsonpath='{.spec.domain}'`. Create or update the same ConfigMap in the app namespace with `domain` and `host` (e.g. `host: "app.<domain>"`). That ConfigMap is the application PARAM. Argo CD then runs the kustomization and applies the result (ConfigMap from repo may overwrite; use overlay to keep cluster-specific value).
+
+4. **RBAC for PreSync**  
+   Grant the PreSync ServiceAccount: read `config.openshift.io` `ingresses` (resourceName `cluster`) via ClusterRole; create/patch ConfigMaps in the app namespace via Role. Keep this RBAC in a separate manifest (e.g. `rbac-domain-hook.yaml`) so it can be removed after sync.
+
+5. **PostSync hook: remove extra RBAC**  
+   Add a **PostSync** hook Job (image: `registry.k8s.io/kubectl:latest`) that deletes the PreSync hook RBAC so it does not persist in the cluster. Delete in order: ClusterRoleBinding, RoleBinding, ClusterRole, Role, ServiceAccount (bindings first, then roles, then SA). Use a **persistent** RBAC (e.g. `rbac-cleanup.yaml`) for this PostSync Job—a separate ServiceAccount and Role/ClusterRole with permission to delete only those hook RBAC resources—so the cleanup Job can run on every sync and the cleanup RBAC is not deleted by the post-hook.
+
+Apply this pattern to **other Ingresses** in the repo: ConfigMap as var, Kustomize replacements, PreSync to gather domain and fill the ConfigMap (application PARAM), PostSync to remove the extra rbac-domain-hook.
+
 ### ✅ PREFER: Ingress with Annotations
 
 Use standard Kubernetes Ingress with appropriate annotations to achieve the same TLS termination as OpenShift Routes:

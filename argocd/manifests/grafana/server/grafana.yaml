@@ -1,0 +1,21 @@
+---
+# Grafana server instance (grafana-operator creates Deployment + Service from this CR).
+# Deploy in the same namespace as the operator (couchbase). Ingress is defined separately
+# in ingress.yaml for TLS and host control (cert-manager, openshift-default).
+apiVersion: grafana.integreatly.org/v1beta1
+kind: Grafana
+metadata:
+  name: server
+  namespace: couchbase
+  labels:
+    app: grafana
+spec:
+  config:
+    log:
+      mode: console
+    security:
+      # Override via admin credentials secret in production (see grafana-operator docs)
+      admin_user: admin
+      admin_password: admin
+  # Ingress is managed by ingress.yaml (cert-manager, cluster domain)
+  # so we do not set spec.ingress here.

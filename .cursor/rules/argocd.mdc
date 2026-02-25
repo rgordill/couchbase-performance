@@ -110,6 +110,10 @@ Common sync waves:
 - `0`: Applications (default)
 - `1+`: Dependent applications
 
+### PreSync/PostSync hooks: remove extra RBAC with a post-hook
+
+When an app uses a **PreSync** hook that requires dedicated RBAC (e.g. reading cluster config, creating a ConfigMap), do **not** leave that RBAC in the cluster after sync. Add a **PostSync** hook Job that deletes the PreSync hook RBAC (ServiceAccount, Role, RoleBinding, and any ClusterRole/ClusterRoleBinding). Use a **persistent** RBAC (separate ServiceAccount and Role/ClusterRole with permission only to delete those hook resources) for the PostSync Job so the cleanup runs on every sync and the cleanup RBAC is not deleted by the post-hook. Delete order: bindings first, then roles, then ServiceAccount. See `.cursor/rules/kubernetes.mdc` (Ingress host from cluster default domain) for the full pattern.
+
 ### Ignore Differences
 
 Always ignore webhook CA bundles and status fields that are managed by controllers:
