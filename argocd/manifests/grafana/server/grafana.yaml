@@ -6,7 +6,6 @@ apiVersion: grafana.integreatly.org/v1beta1
 kind: Grafana
 metadata:
   name: server
-  namespace: couchbase
   labels:
     app: grafana
 spec:

@@ -6,3 +6,4 @@ kind: Kustomization
 resources:
   - grafana.yaml
   - ingress.yaml
+  - datasource.yaml
