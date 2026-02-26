@@ -8,7 +8,7 @@ metadata:
   name: couchbase-argocd-app
   namespace: openshift-gitops
 spec:
-  project: couchbase-performance
+  project: default
   sources:
     - repoURL: https://github.com/rgordill/couchbase-performance.git
       targetRevision: HEAD
