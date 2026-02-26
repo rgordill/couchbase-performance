@@ -61,7 +61,6 @@ spec:
     - metadata:
         name: couchbase
       spec:
-        storageClassName: "ocs-storagecluster-ceph-rbd"
         accessModes:
           - ReadWriteOnce
         resources:
