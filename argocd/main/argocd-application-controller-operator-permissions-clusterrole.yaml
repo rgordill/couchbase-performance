@@ -1,0 +1,43 @@
+---
+# User-defined ClusterRole for the Argo CD Application Controller (cluster-scoped instance).
+# Permissions are aggregated into the controller's admin role when:
+# 1. spec.aggregatedClusterRoles is true on the ArgoCD CR, and
+# 2. This ClusterRole has the label argocd/aggregate-to-admin: 'true' and labels
+#    matching the Argo CD instance (managed-by = namespace, name = instance name).
+# See: https://docs.redhat.com/en/documentation/red_hat_openshift_gitops/1.19/html/declarative_cluster_configuration/customizing-permissions-by-creating-aggregated-cluster-roles
+#
+# No ClusterRoleBinding is required: the OpenShift GitOps Operator binds the
+# aggregated cluster role to the Application Controller SA.
+#
+# Apply before creating the app-of-apps: kubectl apply -f argocd/main/argocd-application-controller-operator-permissions-clusterrole.yaml
+# Adjust labels if your Argo CD instance name or namespace differ from openshift-gitops.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: argocd-application-controller-operator-crds
+  labels:
+    app.kubernetes.io/managed-by: openshift-gitops
+    app.kubernetes.io/name: openshift-gitops
+    app.kubernetes.io/part-of: argocd
+    argocd/aggregate-to-admin: "true"
+rules:
+  # CRDs from Couchbase Operator and Grafana Operator Helm charts
+  - apiGroups: ["apiextensions.k8s.io"]
+    resources: ["customresourcedefinitions"]
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+  # Webhook configurations installed by operator charts (admission controllers)
+  - apiGroups: ["admissionregistration.k8s.io"]
+    resources: ["mutatingwebhookconfigurations", "validatingwebhookconfigurations"]
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+  # Couchbase Operator CRs (CouchbaseCluster, CouchbaseBucket, etc.)
+  - apiGroups: ["couchbase.com"]
+    resources: ["*"]
+    verbs: ["*"]
+  # Grafana Operator CRs (Grafana, GrafanaDashboard, GrafanaDatasource, etc.)
+  - apiGroups: ["grafana.integreatly.org"]
+    resources: ["*"]
+    verbs: ["*"]
+  # Legacy Grafana operator API group (if present)
+  - apiGroups: ["integreatly.org"]
+    resources: ["*"]
+    verbs: ["*"]

@@ -7,14 +7,14 @@ metadata:
 spec:
   name: performance
   memoryQuota: 1Gi
-  replicas: 1
+  replicas: 0
   ioPriority: high
   evictionPolicy: fullEviction
   conflictResolution: seqno
   enableFlush: false
   enableIndexReplica: false   # must be false for magma/plasma buckets (operator validation)
   compressionMode: active
-  minimumDurability: majorityAndPersistActive
+  minimumDurability: none
 ---
 apiVersion: couchbase.com/v2
 kind: CouchbaseBucket
@@ -24,7 +24,7 @@ metadata:
 spec:
   name: test
   memoryQuota: 512Mi
-  replicas: 1
+  replicas: 0
   ioPriority: low
   evictionPolicy: valueOnly
   conflictResolution: seqno
@@ -41,7 +41,7 @@ metadata:
 spec:
   name: cache
   memoryQuota: 512Mi
-  replicas: 1
+  replicas: 0
   ioPriority: high
   evictionPolicy: fullEviction
   conflictResolution: seqno

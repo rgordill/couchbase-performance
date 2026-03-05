@@ -12,7 +12,6 @@ metadata:
   annotations:
     route.openshift.io/termination: edge
     route.openshift.io/insecureEdgeTerminationPolicy: Redirect
-    cert-manager.io/cluster-issuer: lab-ca-issuer
 spec:
   ingressClassName: openshift-default
   tls:

@@ -49,7 +49,8 @@ couchbase-performance/
 - OpenShift 4.12+ cluster
 - ArgoCD installed on the cluster
 - `kubectl` CLI configured (or `oc` on OpenShift)
-- User Workload Monitoring enabled
+- **cert-manager** with a ClusterIssuer named `lab-ca-issuer` (required for Ingress TLS). See [cert-manager Operator for Red Hat OpenShift (4.21)](https://docs.redhat.com/en/documentation/openshift_container_platform/4.21/html/security_and_compliance/cert-manager-operator-for-red-hat-openshift).
+- **User Workload Monitoring** enabled so that monitoring can collect metrics from the Couchbase ServiceMonitors. See [Configuring user workload monitoring (OpenShift 4.21)](https://docs.redhat.com/en/documentation/monitoring_stack_for_red_hat_openshift/4.21/html/configuring_user_workload_monitoring).
 
 ### Deploy
 
