@@ -15,40 +15,48 @@ alwaysApply: false
 
 ## Version Compatibility Requirements
 
+**Principle:** Use the **latest supported version** whenever possible for Operator, Server, backup image, exporter, and Fluent Bit. Prefer the newest stable release in the supported line (e.g. latest 8.0.x over 7.6.x when both are supported). Still pin to **exact** image tags in manifests (do not use the `latest` tag).
+
 ### Supported Versions
 
 | Component | Minimum Version | Recommended Version | Notes |
 |-----------|----------------|---------------------|-------|
-| **Couchbase Operator** | 2.8.0 | 2.9.0+ | Use latest stable release |
-| **Couchbase Server** | 7.2.0 | 7.6.x or 8.0.x | Enterprise Edition required |
+| **Couchbase Operator** | 2.8.0 | Latest 2.x stable | Use latest supported release |
+| **Couchbase Server** | 7.2.0 | Latest 8.0.x or 7.6.x | Prefer 8.0.x; Enterprise Edition required |
 | **Kubernetes** | 1.31.0 | 1.33.0+ | Must be 1.33+ for this project |
 | **OpenShift** | 4.18 | 4.20+ | Must be 4.20+ for this project |
-| **Operator Backup Image** | 1.5.0 | 1.5.0+ | For backup/restore functionality |
-| **Fluent Bit** | 1.2.0 | 1.3.0 | For log forwarding |
+| **Operator Backup Image** | 1.5.0 | Latest 1.x | Use latest supported for backup/restore |
+| **Fluent Bit** | 1.2.0 | Latest 1.3.x | Use latest supported for log forwarding |
 
 ### ✅ REQUIRED: Version Specifications
 
-Always specify exact versions in manifests to ensure compatibility:
+Use the **latest supported version** in your chosen line (e.g. latest 8.0.x), and **always specify that version explicitly** in manifests—never use the `latest` tag. Check [release notes](https://docs.couchbase.com/operator/current/release-notes.html) and [prerequisites](https://docs.couchbase.com/operator/current/prerequisite-and-setup.html) for current versions.
 
 ```yaml
-# ✅ GOOD - Specify exact versions
+# ✅ GOOD - Latest supported version, pinned explicitly (e.g. latest 8.0.x at time of writing)
 apiVersion: couchbase.com/v2
 kind: CouchbaseCluster
 metadata:
   name: couchbase-cluster
 spec:
-  image: couchbase/server:7.6.8  # Specific version
+  image: couchbase/server:7.6.8  # Use latest 7.6.x or 8.0.x; pin exact tag
   
   monitoring:
     prometheus:
       enabled: true
-      image: couchbase/exporter:1.0.8  # Specific version
+      image: couchbase/exporter:1.0.8  # Use latest supported; pin exact tag
 ```
 
 ```yaml
-# ❌ BAD - Using 'latest' tag
+# ❌ BAD - Using 'latest' tag (unpredictable, avoid)
 spec:
   image: couchbase/server:latest  # Don't use latest
+```
+
+```yaml
+# ❌ BAD - Using old version when newer supported version is available
+spec:
+  image: couchbase/server:7.2.0  # Prefer latest 7.6.x or 8.0.x when supported
 ```
 
 ### Couchbase Server Version Matrix
@@ -60,9 +68,10 @@ spec:
 | 7.2.x | 2.6.0+ | Legacy support | ⚠️ Compatible |
 
 **Important Notes:**
-- Couchbase Server 8.0 requires Operator 2.9.0+ for new features
-- For optimal performance with vector search, use nodes with AVX2 CPU instructions (x86-64-v3)
-- Server 7.2-8.0 supported with current operator versions
+- Prefer the **latest supported** Server and Operator versions (e.g. latest 8.0.x with Operator 2.9.0+).
+- Couchbase Server 8.0 requires Operator 2.9.0+ for new features.
+- For optimal performance with vector search, use nodes with AVX2 CPU instructions (x86-64-v3).
+- Server 7.2-8.0 supported with current operator versions.
 
 ### Platform Compatibility
 
@@ -208,6 +217,7 @@ spec:
 ```
 
 **Compatibility Matrix:**
+- Use the **latest supported** operator-backup image (e.g. 1.5.0 or newer); pin the exact tag.
 - `operator-backup:1.5.0` → Uses `cbbackupmgr 7.6.8`
 - Supports backup/restore for Couchbase Server 7.2+
 - Compatible with Operator 2.8.0+
@@ -267,7 +277,7 @@ spec:
 
 **Fluent Bit Compatibility:**
 - Operator 2.9.0 supports Fluent Bit 1.2.0 - 1.3.0
-- Use version 1.3.0 for latest features
+- Use the **latest supported** version (e.g. 1.3.0 or newest 1.3.x) for latest features
 
 ## Storage Requirements
 
@@ -363,11 +373,12 @@ spec:
 ```
 
 **Upgrade Best Practices:**
-1. Review release notes before upgrading
-2. Test upgrades in non-production first
-3. Use `installPlanApproval: Manual` for production
-4. Verify compatibility matrix before upgrading
-5. Backup cluster before major upgrades
+1. Prefer staying on the **latest supported** Operator and Server versions when feasible.
+2. Review release notes before upgrading
+3. Test upgrades in non-production first
+4. Use `installPlanApproval: Manual` for production
+5. Verify compatibility matrix before upgrading
+6. Backup cluster before major upgrades
 
 ### Server Upgrades
 
@@ -591,10 +602,11 @@ metadata:
 ## Summary
 
 **Always:**
+- ✅ Use the **latest supported version** whenever possible (Operator, Server, backup, exporter, Fluent Bit)
 - ✅ Use Kubernetes 1.33+ or OpenShift 4.20+
-- ✅ Use Couchbase Operator 2.9.0+
-- ✅ Use Couchbase Server 7.6.x or 8.0.x
-- ✅ Specify exact versions (no 'latest' tags)
+- ✅ Use Couchbase Operator 2.9.0+ (prefer latest stable)
+- ✅ Use Couchbase Server 7.6.x or 8.0.x (prefer latest 8.0.x when supported)
+- ✅ Pin to **exact** image tags in manifests (no `latest` tag)
 - ✅ Use CSI-compliant persistent storage
 - ✅ Allocate minimum 2 CPU and calculated memory per pod
 - ✅ Enable monitoring with Prometheus
@@ -604,7 +616,8 @@ metadata:
 
 **Never:**
 - ❌ Use unsupported Kubernetes/OpenShift versions
-- ❌ Use 'latest' image tags
+- ❌ Use `latest` image tags
+- ❌ Stay on an old component version when a newer supported version is available
 - ❌ Mix CPU architectures in cluster
 - ❌ Deploy without persistent volumes in production
 - ❌ Skip resource requests/limits

@@ -1,5 +1,5 @@
 ---
-- name: Apply Terraform configuration (create/update VM)
+- name: Apply Terraform configuration (libvirt)
   cloud.terraform.terraform:
     project_path: "{{ terraform_project_path }}"
     state: present
@@ -14,19 +14,58 @@
       libvirt_base_image: "{{ vm_provision_libvirt_base_image }}"
       libvirt_pool: "{{ vm_provision_libvirt_pool }}"
       libvirt_network_name: "{{ vm_provision_libvirt_network_name }}"
+  register: vm_provision_terraform
+  when: vm_provision_backend == 'libvirt'
+
+- name: Apply Terraform configuration (aws)
+  cloud.terraform.terraform:
+    project_path: "{{ terraform_project_path }}"
+    state: present
+    force_init: true
+    variables:
+      vm_name: "{{ vm_provision_vm_name }}"
+      vcpu: "{{ vm_provision_vcpu }}"
+      memory_mib: "{{ vm_provision_memory_mib }}"
+      disk_gib: "{{ vm_provision_disk_gib }}"
+      ssh_public_key: "{{ vm_provision_ssh_public_key }}"
       aws_region: "{{ vm_provision_aws_region }}"
       aws_ami_id: "{{ vm_provision_aws_ami_id }}"
       aws_instance_type: "{{ vm_provision_aws_instance_type }}"
       aws_key_name: "{{ vm_provision_aws_key_name }}"
       aws_subnet_id: "{{ vm_provision_aws_subnet_id }}"
   register: vm_provision_terraform
+  when: vm_provision_backend == 'aws'
+
+- name: Apply Terraform configuration (azure)
+  cloud.terraform.terraform:
+    project_path: "{{ terraform_project_path }}"
+    state: present
+    force_init: true
+    variables:
+      vm_name: "{{ vm_provision_vm_name }}"
+      vcpu: "{{ vm_provision_vcpu }}"
+      memory_mib: "{{ vm_provision_memory_mib }}"
+      disk_gib: "{{ vm_provision_disk_gib }}"
+      ssh_public_key: "{{ vm_provision_ssh_public_key }}"
+      admin_password: "{{ vm_provision_azure_admin_password }}"
+      azure_location: "{{ vm_provision_azure_location }}"
+      azure_resource_group_name: "{{ vm_provision_azure_resource_group_name }}"
+      azure_vm_size: "{{ vm_provision_azure_vm_size }}"
+      azure_image: "{{ vm_provision_azure_image }}"
+      azure_subnet_id: "{{ vm_provision_azure_subnet_id }}"
+  register: vm_provision_terraform
+  when: vm_provision_backend == 'azure'
 
 - name: Get Terraform outputs
   cloud.terraform.terraform_output:
     project_path: "{{ terraform_project_path }}"
-  register: terraform_outputs
+  register: vm_provision_terraform_outputs
+  when: vm_provision_backend in ['libvirt', 'aws', 'azure']
 
 - name: Display Terraform outputs
   ansible.builtin.debug:
-    msg: "{{ terraform_outputs.outputs }}"
-  when: terraform_outputs.outputs is defined and terraform_outputs.outputs | length > 0
+    msg: "{{ vm_provision_terraform_outputs.outputs }}"
+  when:
+    - vm_provision_backend in ['libvirt', 'aws', 'azure']
+    - vm_provision_terraform_outputs.outputs is defined
+    - vm_provision_terraform_outputs.outputs | length > 0

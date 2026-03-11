@@ -1,0 +1,10 @@
+---
+# Couchbase Server install on RHEL/OL/Amazon Linux (dnf/yum).
+# Ref: https://docs.couchbase.com/server/current/install/rhel-suse-install-intro.html
+# Canonical values are in group_vars/all.yml (version matches ArgoCD couchbase/server:8.0.0).
+
+# Fallbacks when not set in group_vars
+couchbase_server_install_edition: enterprise
+couchbase_server_install_version: ""
+couchbase_server_install_release_rpm_url: "https://packages.couchbase.com/releases/couchbase-release/couchbase-release-1.0.noarch.rpm"
+couchbase_server_install_set_limits: true

@@ -17,5 +17,12 @@ vm_provision_aws_instance_type: "{{ aws_instance_type | default('t3.medium') }}"
 vm_provision_aws_key_name: "{{ aws_key_name | default('') }}"
 vm_provision_aws_subnet_id: "{{ aws_subnet_id | default('') }}"
 
-# SSH public key from vault (provisioner ~/.ssh/id_rsa.pub); passed to Terraform for cloud-user (libvirt) / ec2-user (AWS)
+vm_provision_azure_location: "{{ azure_location | default('East US') }}"
+vm_provision_azure_resource_group_name: "{{ azure_resource_group_name | default('') }}"
+vm_provision_azure_vm_size: "{{ azure_vm_size | default('Standard_B2s') }}"
+vm_provision_azure_image: "{{ azure_image | default({'publisher': 'RedHat', 'offer': 'rhel', 'sku': '9-lvm', 'version': 'latest'}) }}"
+vm_provision_azure_subnet_id: "{{ azure_subnet_id | default('') }}"
+vm_provision_azure_admin_password: "{{ vault_azure_admin_password | default(admin_password | default('')) }}"
+
+# SSH public key from vault (provisioner ~/.ssh/id_rsa.pub); passed to Terraform for cloud-user (libvirt) / ec2-user (AWS) / azureuser (Azure)
 vm_provision_ssh_public_key: "{{ ssh_public_key | default('') }}"

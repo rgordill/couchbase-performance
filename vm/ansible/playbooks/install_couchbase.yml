@@ -1,0 +1,17 @@
+---
+# Install Couchbase Server on deployed VM(s).
+# Run after deploy.yml (Terraform); target hosts must be in group couchbase_servers.
+# Example: add your VM to inventory under couchbase_servers (IP from Terraform output).
+#
+#   ansible-playbook -i inventory/hosts.yml playbooks/install_couchbase.yml
+#
+# Override edition/version:
+#   ansible-playbook -i inventory/hosts.yml playbooks/install_couchbase.yml \
+#     -e couchbase_server_install_edition=community \
+#     -e couchbase_server_install_version=8.0.0-3777
+
+- name: Install Couchbase Server on VM(s)
+  hosts: couchbase_servers
+  become: true
+  roles:
+    - role: couchbase_server_install

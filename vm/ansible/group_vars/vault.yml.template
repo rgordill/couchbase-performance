@@ -2,9 +2,13 @@
 # Copy to vault.yml and encrypt: cp vault.yml.template vault.yml && ansible-vault encrypt vault.yml
 # Use: ansible-playbook playbooks/deploy.yml --ask-vault-pass
 
-# SSH public key from the provisioner host (e.g. content of ~/.ssh/id_rsa.pub).
+# SSH public key: by default read from the provisioner's ~/.ssh/id_rsa.pub (no copy-paste).
+# Optional: set vault_ssh_public_key here to override (e.g. a different key or when ~/.ssh/id_rsa.pub is missing).
 # Passed to Terraform: libvirt uses it for cloud-user; AWS uses it to create an EC2 key pair for ec2-user.
-vault_ssh_public_key: "ssh-rsa AAAAB3... your-user@provisioner"
+# vault_ssh_public_key: "ssh-rsa AAAAB3... your-user@provisioner"
 
 # Optional: existing EC2 key pair name (only used when vault_ssh_public_key is not used for AWS)
 # vault_aws_key_name: "my-ec2-key-name"
+
+# Optional: Azure admin password for azureuser (only when SSH key is not set; avoid in production)
+# vault_azure_admin_password: "your-secure-password"

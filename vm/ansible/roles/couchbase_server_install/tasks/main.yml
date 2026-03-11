@@ -1,0 +1,63 @@
+---
+# Install Couchbase Server on RHEL/OL/Amazon Linux via dnf/yum.
+# Ref: https://docs.couchbase.com/server/current/install/rhel-suse-install-intro.html
+
+- name: Require Red Hat family (RHEL/OL/Amazon Linux)
+  ansible.builtin.fail:
+    msg: "Couchbase Server install role supports Red Hat family only (RHEL, Oracle Linux, Amazon Linux 2023). Found: {{ ansible_os_family }}."
+  when: ansible_os_family != "RedHat"
+
+- name: Install Couchbase release package (adds repository)
+  ansible.builtin.dnf:
+    name: "{{ couchbase_server_install_release_rpm_url }}"
+    state: present
+  when: ansible_os_family == "RedHat"
+
+- name: Set Couchbase Server package name (enterprise, latest)
+  ansible.builtin.set_fact:
+    couchbase_server_install_package: "couchbase-server"
+  when:
+    - ansible_os_family == "RedHat"
+    - couchbase_server_install_edition == "enterprise"
+    - couchbase_server_install_version | length == 0
+
+- name: Set Couchbase Server package name (enterprise, pinned version)
+  ansible.builtin.set_fact:
+    couchbase_server_install_package: "couchbase-server-{{ couchbase_server_install_version }}"
+  when:
+    - ansible_os_family == "RedHat"
+    - couchbase_server_install_edition == "enterprise"
+    - couchbase_server_install_version | length > 0
+
+- name: Set Couchbase Server package name (community, latest)
+  ansible.builtin.set_fact:
+    couchbase_server_install_package: "couchbase-server-community"
+  when:
+    - ansible_os_family == "RedHat"
+    - couchbase_server_install_edition == "community"
+    - couchbase_server_install_version | length == 0
+
+- name: Set Couchbase Server package name (community, pinned version)
+  ansible.builtin.set_fact:
+    couchbase_server_install_package: "couchbase-server-community-{{ couchbase_server_install_version }}"
+  when:
+    - ansible_os_family == "RedHat"
+    - couchbase_server_install_edition == "community"
+    - couchbase_server_install_version | length > 0
+
+- name: Install Couchbase Server
+  ansible.builtin.dnf:
+    name: "{{ couchbase_server_install_package }}"
+    state: present
+  when: ansible_os_family == "RedHat"
+
+- name: Set Couchbase process limits (RHEL)
+  ansible.builtin.copy:
+    dest: /etc/security/limits.d/91-couchbase.conf
+    content: |
+      couchbase soft nproc 4096
+      couchbase hard nproc 16384
+    mode: "0644"
+  when:
+    - ansible_os_family == "RedHat"
+    - couchbase_server_install_set_limits | bool
