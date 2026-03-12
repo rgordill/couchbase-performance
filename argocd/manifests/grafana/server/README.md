@@ -7,7 +7,7 @@ Grafana server instance and Ingress for the Couchbase performance project.
 - **rbac-sync-hook.yaml** – ServiceAccount and RBAC for PreSync/PostSync hooks (read OpenShift ingress, ConfigMap, patch Ingress in couchbase).
 - **sync-hook-presync.yaml** – PreSync Job: ensures ConfigMap `cluster-configuration` in couchbase has `ingress-domain` and `grafana-host` (from OpenShift) **before** the main sync applies resources.
 - **sync-hook-postsync.yaml** – PostSync Job: patches Ingress `grafana-server` with the host from `cluster-configuration` (effectively substitutes `PLACEHOLDER_SUBDOMAIN` after kustomize build).
-- **grafana.yaml** – `Grafana` CR (grafana.integreatly.org/v1beta1). The grafana-operator creates the Deployment and Service; service name `server`, port 3000.
+- **grafana.yaml** – `Grafana` CR (grafana.integreatly.org/v1beta1). The grafana-operator creates the Deployment and Service; service name `server`, port 3000. Includes the **image renderer** as a sidecar (same behaviour as grafana-compose: BROWSER_* env, GF_RENDERING_* defaults for alerting/reporting/dashboard exports).
 - **ingress.yaml** – Ingress for the Grafana UI (edge TLS, cert-manager `lab-ca-issuer`). Host is `grafana-couchbase.PLACEHOLDER_SUBDOMAIN` in repo; PostSync sets the real host (e.g. `grafana-couchbase.apps.ocp.sa-iberia.lab.eng.brq2.redhat.com`).
 - **kustomization.yaml** – Resources (hooks, Grafana CR, Ingress).
 

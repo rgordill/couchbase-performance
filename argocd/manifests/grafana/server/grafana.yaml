@@ -2,6 +2,7 @@
 # Grafana server instance (grafana-operator creates Deployment + Service from this CR).
 # Deploy in the same namespace as the operator (couchbase). Ingress is defined separately
 # in ingress.yaml for TLS and host control (cert-manager, openshift-default).
+# Image renderer runs as a sidecar for alerting/reporting/dashboard exports (same as grafana-compose).
 apiVersion: grafana.integreatly.org/v1beta1
 kind: Grafana
 metadata:
@@ -16,5 +17,48 @@ spec:
       # Override via admin credentials secret in production (see grafana-operator docs)
       admin_user: admin
       admin_password: admin
+    # Rendering: sidecar listens on localhost:8081; callback is Grafana in same pod.
+    rendering:
+      server_url: http://localhost:8081/render
+      callback_url: http://localhost:3000/
   # Ingress is managed by ingress.yaml (cert-manager, cluster domain)
   # so we do not set spec.ingress here.
+  deployment:
+    spec:
+      template:
+        spec:
+          containers:
+            # Grafana main container: rendering server, callback, and default dimensions (from compose).
+            - name: grafana
+              env:
+                - name: GF_RENDERING_SERVER_URL
+                  value: "http://localhost:8081/render"
+                - name: GF_RENDERING_CALLBACK_URL
+                  value: "http://localhost:3000/"
+                - name: GF_RENDERING_DEFAULT_IMAGE_WIDTH
+                  value: "1920"
+                - name: GF_RENDERING_DEFAULT_IMAGE_HEIGHT
+                  value: "1080"
+                - name: GF_RENDERING_DEFAULT_IMAGE_SCALE
+                  value: "2"
+            # Image renderer sidecar (grafana/grafana-image-renderer from compose).
+            - name: image-renderer
+              image: grafana/grafana-image-renderer:latest
+              env:
+                - name: BROWSER_PAGE_SCALE_FACTOR
+                  value: "2"
+                - name: BROWSER_MIN_WIDTH
+                  value: "1920"
+                - name: BROWSER_MIN_HEIGHT
+                  value: "540"
+                - name: BROWSER_MAX_WIDTH
+                  value: "3840"
+                - name: BROWSER_MAX_HEIGHT
+                  value: "-1"
+                - name: BROWSER_PORTRAIT
+                  value: "true"
+              resources:
+                requests:
+                  memory: "256Mi"
+                limits:
+                  memory: "512Mi"
