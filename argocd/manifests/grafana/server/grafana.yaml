@@ -20,7 +20,6 @@ spec:
     # Rendering: sidecar listens on localhost:8081; callback is Grafana in same pod.
     rendering:
       server_url: http://localhost:8081/render
-      callback_url: http://localhost:3000/
   # Ingress is managed by ingress.yaml (cert-manager, cluster domain)
   # so we do not set spec.ingress here.
   # Persistent storage for Grafana data (dashboards, DB, plugins); operator mounts at /var/lib/grafana.
@@ -41,8 +40,6 @@ spec:
               env:
                 - name: GF_RENDERING_SERVER_URL
                   value: "http://localhost:8081/render"
-                - name: GF_RENDERING_CALLBACK_URL
-                  value: "http://localhost:3000/"
                 - name: GF_RENDERING_DEFAULT_IMAGE_WIDTH
                   value: "1920"
                 - name: GF_RENDERING_DEFAULT_IMAGE_HEIGHT
