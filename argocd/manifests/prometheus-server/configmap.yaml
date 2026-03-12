@@ -1,0 +1,21 @@
+---
+# Prometheus configuration for custom server (no operator).
+# enableRemoteWriteReceiver is enabled via container args in deployment.yaml.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: prometheus-server-config
+  namespace: couchbase
+  labels:
+    app: prometheus-server
+data:
+  prometheus.yml: |
+    global:
+      scrape_interval: 15s
+      evaluation_interval: 15s
+
+    scrape_configs:
+      - job_name: prometheus
+        static_configs:
+          - targets:
+              - localhost:9090

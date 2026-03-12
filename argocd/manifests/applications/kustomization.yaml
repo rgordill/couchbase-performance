@@ -8,3 +8,4 @@ resources:
   - couchbase-operator-app.yaml
   - grafana-operator-app.yaml
   - grafana-server-appset.yaml
+  - prometheus-server-appset.yaml
