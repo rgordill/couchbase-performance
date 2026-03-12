@@ -2,6 +2,11 @@
 # Matches previous bare-manifest setup: remote write receiver, StatefulSet, 10Gi PVC, Ingress with TLS + basic auth.
 # Ingress host is overridden at deploy time via ApplicationSet helm parameters (prometheus-server.<ingress-domain>).
 
+# configmap-reload sidecar: no fixed UID so OpenShift can assign (restricted-v2 SCC)
+configmapReload:
+  prometheus:
+    containerSecurityContext: {}
+
 # Subcharts: we only need the Prometheus server
 alertmanager:
   enabled: false
@@ -36,8 +41,14 @@ server:
     accessModes:
       - ReadWriteOnce
 
-  # No run-as-user override (chart default may set it; we removed it in bare manifests)
-  securityContext: {}
+  # OpenShift: do not set runAsUser/fsGroup so the namespace's allocated UID range is used (restricted-v2 SCC).
+  # Chart default is 65534 (nobody), which is forbidden; explicitly null these so they are omitted.
+  securityContext:
+    runAsUser: null
+    runAsGroup: null
+    fsGroup: null
+    runAsNonRoot: null
+  containerSecurityContext: {}
 
   # Ingress: TLS + basic auth; host set by ApplicationSet parameters
   ingress:
