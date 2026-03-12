@@ -17,9 +17,11 @@ spec:
       # Override via admin credentials secret in production (see grafana-operator docs)
       admin_user: admin
       admin_password: admin
-    # Rendering: sidecar listens on localhost:8081; callback is Grafana in same pod.
+    # Rendering: sidecar listens on 127.0.0.1:8081 (avoid IPv6 [::1] connection refused).
+    # Callback URL: renderer loads dashboard from Grafana in same pod (127.0.0.1:3000).
     rendering:
-      server_url: http://localhost:8081/render
+      server_url: http://127.0.0.1:8081/render
+      callback_url: http://127.0.0.1:3000/
   # Ingress is managed by ingress.yaml (cert-manager, cluster domain)
   # so we do not set spec.ingress here.
   # Persistent storage for Grafana data (dashboards, DB, plugins); operator mounts at /var/lib/grafana.
@@ -39,7 +41,9 @@ spec:
             - name: grafana
               env:
                 - name: GF_RENDERING_SERVER_URL
-                  value: "http://localhost:8081/render"
+                  value: "http://127.0.0.1:8081/render"
+                - name: GF_RENDERING_CALLBACK_URL
+                  value: "http://127.0.0.1:3000/"
                 - name: GF_RENDERING_DEFAULT_IMAGE_WIDTH
                   value: "1920"
                 - name: GF_RENDERING_DEFAULT_IMAGE_HEIGHT
