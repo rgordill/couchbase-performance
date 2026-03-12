@@ -23,6 +23,14 @@ spec:
       callback_url: http://localhost:3000/
   # Ingress is managed by ingress.yaml (cert-manager, cluster domain)
   # so we do not set spec.ingress here.
+  # Persistent storage for Grafana data (dashboards, DB, plugins); operator mounts at /var/lib/grafana.
+  persistentVolumeClaim:
+    spec:
+      accessModes:
+        - ReadWriteOnce
+      resources:
+        requests:
+          storage: 1Gi
   deployment:
     spec:
       template:
