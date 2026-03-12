@@ -26,51 +26,6 @@ build: ## Build the container image (version, os, arch; untar into /usr/local)
 push: ## Push image to registry
 	$(BUILDER) push $(REGISTRY)/$(IMAGE_NAME):$(IMAGE_TAG)
 
-.PHONY: run
-run: ## Run a quick test
-	$(BUILDER) run --rm \
-		-e CB_HOST=couchbase-cluster \
-		-e CB_USER=performance-user \
-		-e CB_PASSWORD=P3rf0rm@nce! \
-		$(REGISTRY)/$(IMAGE_NAME):$(IMAGE_TAG) \
-		/scripts/run-pillowfight.sh
-
-.PHONY: test-write-heavy
-test-write-heavy: ## Run write-heavy benchmark
-	$(BUILDER) run --rm \
-		-e CB_HOST=couchbase-cluster \
-		-e CB_USER=performance-user \
-		-e CB_PASSWORD=P3rf0rm@nce! \
-		$(REGISTRY)/$(IMAGE_NAME):$(IMAGE_TAG) \
-		/scripts/benchmark.sh write-heavy
-
-.PHONY: test-read-heavy
-test-read-heavy: ## Run read-heavy benchmark
-	$(BUILDER) run --rm \
-		-e CB_HOST=couchbase-cluster \
-		-e CB_USER=performance-user \
-		-e CB_PASSWORD=P3rf0rm@nce! \
-		$(REGISTRY)/$(IMAGE_NAME):$(IMAGE_TAG) \
-		/scripts/benchmark.sh read-heavy
-
-.PHONY: test-mixed
-test-mixed: ## Run mixed workload benchmark
-	$(BUILDER) run --rm \
-		-e CB_HOST=couchbase-cluster \
-		-e CB_USER=performance-user \
-		-e CB_PASSWORD=P3rf0rm@nce! \
-		$(REGISTRY)/$(IMAGE_NAME):$(IMAGE_TAG) \
-		/scripts/benchmark.sh mixed
-
-.PHONY: test-stress
-test-stress: ## Run stress test
-	$(BUILDER) run --rm \
-		-e CB_HOST=couchbase-cluster \
-		-e CB_USER=performance-user \
-		-e CB_PASSWORD=P3rf0rm@nce! \
-		$(REGISTRY)/$(IMAGE_NAME):$(IMAGE_TAG) \
-		/scripts/benchmark.sh stress
-
 .PHONY: shell
 shell: ## Start interactive shell in container
 	$(BUILDER) run --rm -it \
