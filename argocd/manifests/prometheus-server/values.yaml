@@ -1,0 +1,100 @@
+# Values for prometheus-community Helm chart (https://github.com/prometheus-community/helm-charts/tree/main/charts/prometheus).
+# Matches previous bare-manifest setup: remote write receiver, StatefulSet, 10Gi PVC, Ingress with TLS + basic auth.
+# Ingress host is overridden at deploy time via ApplicationSet helm parameters (prometheus-server.<ingress-domain>).
+
+# Subcharts: we only need the Prometheus server
+alertmanager:
+  enabled: false
+kube-state-metrics:
+  enabled: false
+prometheus-node-exporter:
+  enabled: false
+prometheus-pushgateway:
+  enabled: false
+
+# Release-wide
+forceNamespace: couchbase
+
+server:
+  fullnameOverride: prometheus-server
+
+  # Remote write receiver (same as --web.enable-remote-write-receiver)
+  extraArgs:
+    web.enable-remote-write-receiver: ""
+
+  extraFlags:
+    - web.enable-lifecycle
+
+  # StatefulSet + 10Gi PVC
+  statefulSet:
+    enabled: true
+  replicaCount: 1
+  persistentVolume:
+    enabled: true
+    size: 10Gi
+    mountPath: /data
+    accessModes:
+      - ReadWriteOnce
+
+  # No run-as-user override (chart default may set it; we removed it in bare manifests)
+  securityContext: {}
+
+  # Ingress: TLS + basic auth; host set by ApplicationSet parameters
+  ingress:
+    enabled: true
+    ingressClassName: openshift-default
+    path: /
+    pathType: Prefix
+    hosts:
+      - PLACEHOLDER
+    tls:
+      - secretName: prometheus-server-tls
+        hosts:
+          - PLACEHOLDER
+    annotations:
+      route.openshift.io/termination: edge
+      route.openshift.io/insecureEdgeTerminationPolicy: Redirect
+      cert-manager.io/cluster-issuer: lab-ca-issuer
+      nginx.ingress.kubernetes.io/auth-type: basic
+      nginx.ingress.kubernetes.io/auth-secret: prometheus-basic-auth
+      nginx.ingress.kubernetes.io/auth-realm: "Prometheus - authentication required"
+
+  # Minimal scrape config (self only); chart defaults add many jobs
+  scrapeConfigs:
+    prometheus:
+      enabled: true
+      job_name: prometheus
+      static_configs:
+        - targets:
+            - localhost:9090
+    kubernetes-api-servers:
+      enabled: false
+    kubernetes-nodes:
+      enabled: false
+    kubernetes-nodes-cadvisor:
+      enabled: false
+    kubernetes-service-endpoints:
+      enabled: false
+    kubernetes-service-endpoints-slow:
+      enabled: false
+    prometheus-pushgateway:
+      enabled: false
+    kubernetes-services:
+      enabled: false
+    kubernetes-pods:
+      enabled: false
+    kubernetes-pods-slow:
+      enabled: false
+
+  # Resources (align with previous manifests)
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 1Gi
+
+  # Service: chart default servicePort 80 is fine (maps to container 9090)
+  service:
+    enabled: true

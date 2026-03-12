@@ -1,7 +1,8 @@
 ---
-# ApplicationSet: one Application for the in-cluster (prometheus-server).
-# Cluster secret has annotation ingress-domain. Host prometheus-server.<ingress-domain> is
-# injected via source.kustomize.patches into the Ingress.
+# ApplicationSet: Prometheus server via Helm (prometheus-community chart).
+# Chart: https://github.com/prometheus-community/helm-charts/tree/main/charts/prometheus
+# Values from Git; Ingress host injected via helm.parameters from cluster secret annotation ingress-domain.
+# Second source applies the basic-auth Secret (same namespace).
 apiVersion: argoproj.io/v1alpha1
 kind: ApplicationSet
 metadata:
@@ -25,22 +26,23 @@ spec:
         ingress-host: 'prometheus-server.{{ index .metadata.annotations "ingress-domain" }}'
     spec:
       project: couchbase-performance
-      source:
-        repoURL: https://github.com/rgordill/couchbase-performance.git
-        targetRevision: HEAD
-        path: argocd/manifests/prometheus-server
-        kustomize:
-          patches:
-            - target:
-                kind: Ingress
-                name: prometheus-server
-              patch: |-
-                - op: replace
-                  path: /spec/rules/0/host
-                  value: "prometheus-server.{{ index .metadata.annotations "ingress-domain" }}"
-                - op: replace
-                  path: /spec/tls/0/hosts/0
-                  value: "prometheus-server.{{ index .metadata.annotations "ingress-domain" }}"
+      sources:
+        - repoURL: https://prometheus-community.github.io/helm-charts
+          chart: prometheus
+          targetRevision: "28.13.0"
+          helm:
+            releaseName: prometheus-server
+            valueFiles:
+              - $values/argocd/manifests/prometheus-server/values.yaml
+            parameters:
+              - name: server.ingress.hosts[0]
+                value: "prometheus-server.{{ index .metadata.annotations "ingress-domain" }}"
+              - name: server.ingress.tls[0].hosts[0]
+                value: "prometheus-server.{{ index .metadata.annotations "ingress-domain" }}"
+        - repoURL: https://github.com/rgordill/couchbase-performance.git
+          targetRevision: HEAD
+          ref: values
+          path: argocd/manifests/prometheus-server
       destination:
         server: '{{.server}}'
         namespace: couchbase
