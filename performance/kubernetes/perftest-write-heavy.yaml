@@ -17,6 +17,7 @@ spec:
         app.kubernetes.io/name: couchbase-perftest
         profile: write-heavy
     spec:
+      automountServiceAccountToken: false
       restartPolicy: Never
       containers:
         - name: benchmark
