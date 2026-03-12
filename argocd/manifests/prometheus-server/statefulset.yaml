@@ -3,13 +3,14 @@
 # Remote write receiver enabled via --web.enable-remote-write-receiver.
 # Authentication is enforced at Ingress (basic auth); Prometheus itself is not configured for auth.
 apiVersion: apps/v1
-kind: Deployment
+kind: StatefulSet
 metadata:
   name: prometheus-server
   namespace: couchbase
   labels:
     app: prometheus-server
 spec:
+  serviceName: prometheus-server
   replicas: 1
   selector:
     matchLabels:
@@ -19,11 +20,7 @@ spec:
       labels:
         app: prometheus-server
     spec:
-      securityContext:
-        runAsNonRoot: true
-        runAsUser: 1000
-        seccompProfile:
-          type: RuntimeDefault
+      automountServiceAccountToken: false
       containers:
         - name: prometheus
           image: quay.io/prometheus/prometheus:v2.52.0
@@ -65,5 +62,12 @@ spec:
         - name: config
           configMap:
             name: prometheus-server-config
-        - name: storage
-          emptyDir: {}
+  volumeClaimTemplates:
+    - metadata:
+        name: storage
+      spec:
+        accessModes:
+          - ReadWriteOnce
+        resources:
+          requests:
+            storage: 10Gi
