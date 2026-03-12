@@ -1,90 +1,235 @@
-# Couchbase Performance Testing Tools
+# Couchbase Performance Testing
 
-This directory contains tools and scripts for performance testing Couchbase.
+This directory contains Kubernetes Jobs and documentation for running Couchbase performance tests with **cbc-pillowfight**. Benchmarks run in the cluster using the perftest container image; no wrapper scripts are used.
 
-## Available Tools
+## Running Benchmarks (Kubernetes Jobs)
 
-### 1. Load Generator
+Benchmarks are defined as Kubernetes Jobs in `performance/kubernetes/`. Each Job runs **cbc-pillowfight** with connection and profile-specific options. Credentials come from the **performance-user** CouchbaseUser and the **performance-user-password** Secret (key `password`).
 
-A tool to generate load on Couchbase for performance testing.
+### Prerequisites
+
+- Couchbase cluster and `performance` bucket in the `couchbase` namespace.
+- **CouchbaseUser** `performance-user` and **Secret** `performance-user-password` (see `argocd/manifests/couchbase/cluster/users.yaml`). The Secret must have key **`password`**.
+
+See `performance/kubernetes/README.md` for authentication troubleshooting (e.g. LCB_ERR_AUTHENTICATION_FAILURE).
+
+### Deploy and run
 
 ```bash
-./tools/load-generator.sh \
-  --host couchbase-cluster \
-  --bucket performance \
-  --username performance-user \
-  --password P3rf0rm@nce! \
-  --operations 1000 \
-  --threads 10
+# Run all Job manifests (each creates one Job)
+kubectl apply -k performance/kubernetes
+
+# Or run a single profile
+kubectl apply -f performance/kubernetes/perftest-mixed.yaml -n couchbase
+kubectl apply -f performance/kubernetes/perftest-read-heavy.yaml -n couchbase
+kubectl apply -f performance/kubernetes/perftest-write-heavy.yaml -n couchbase
+kubectl apply -f performance/kubernetes/perftest-stress.yaml -n couchbase
+kubectl apply -f performance/kubernetes/perftest-small-documents.yaml -n couchbase
+kubectl apply -f performance/kubernetes/perftest-large-documents.yaml -n couchbase
 ```
 
-### 2. Performance Benchmark
-
-Run standardized performance benchmarks.
+### View logs
 
 ```bash
-./tools/benchmark.sh --profile write-heavy
-./tools/benchmark.sh --profile read-heavy
-./tools/benchmark.sh --profile mixed
+kubectl logs job/perftest-mixed -n couchbase -f
 ```
 
-### 3. Metrics Collector
+Jobs use `ttlSecondsAfterFinished: 86400` (24h) so completed/failed Jobs are cleaned up automatically. To re-run a profile, delete the Job first: `kubectl delete job perftest-mixed -n couchbase`.
 
-Collect and export Prometheus metrics for analysis.
+## cbc-pillowfight command lines (per profile)
 
-```bash
-./tools/collect-metrics.sh --duration 3600 --output metrics.json
-```
+Connection is via env vars: `CB_HOST`, `CB_BUCKET`, `CB_USER`, `CB_PASSWORD` (password from Secret `performance-user-password`, key `password`). The equivalent command lines are below.
 
-### 4. Capacity Planning
-
-Analyze current usage and provide capacity recommendations.
+### Read-heavy (10% writes, 90% reads)
 
 ```bash
-./tools/capacity-planning.sh --namespace couchbase
-```
-
-## Creating Performance Tests
-
-### Using cbc-pillowfight
-
-```bash
-# High write load
-kubectl exec -it -n couchbase couchbase-cluster-0000 -- \
-  cbc-pillowfight \
-  -U couchbase://localhost/performance \
-  -u performance-user \
-  -P P3rf0rm@nce! \
-  --num-items 1000000 \
-  --num-threads 4 \
-  --set-pct 100 \
+cbc-pillowfight \
+  -U "couchbase://$(CB_HOST)/$(CB_BUCKET)" \
+  -u "$(CB_USER)" \
+  -P "$(CB_PASSWORD)" \
+  --batch-size 1 \
+  --num-cycles 100000 \
+  --num-items 100000 \
+  --num-threads 1 \
   --min-size 1024 \
-  --max-size 4096
+  --max-size 1024 \
+  --set-pct 10 \
+  --timings \
+  --json
+```
 
-# Read-heavy load
-kubectl exec -it -n couchbase couchbase-cluster-0000 -- \
-  cbc-pillowfight \
-  -U couchbase://localhost/performance \
-  -u performance-user \
-  -P P3rf0rm@nce! \
+### Write-heavy (90% writes, 10% reads)
+
+```bash
+cbc-pillowfight \
+  -U "couchbase://${CB_HOST}/${CB_BUCKET}" \
+  -u "${CB_USER}" \
+  -P "${CB_PASSWORD}" \
+  --num-items 100000 \
+  --num-threads 8 \
+  --min-size 512 \
+  --max-size 8192 \
+  --set-pct 90 \
+  --json
+```
+
+### Mixed (50% writes, 50% reads)
+
+```bash
+cbc-pillowfight \
+  -U "couchbase://${CB_HOST}/${CB_BUCKET}" \
+  -u "${CB_USER}" \
+  -P "${CB_PASSWORD}" \
+  --num-items 100000 \
+  --num-threads 8 \
+  --min-size 1024 \
+  --max-size 4096 \
+  --set-pct 50 \
+  --json
+```
+
+### Stress (high concurrency: 32 threads, 1M ops)
+
+```bash
+cbc-pillowfight \
+  -U "couchbase://${CB_HOST}/${CB_BUCKET}" \
+  -u "${CB_USER}" \
+  -P "${CB_PASSWORD}" \
   --num-items 1000000 \
+  --num-threads 32 \
+  --min-size 1024 \
+  --max-size 4096 \
+  --set-pct 50 \
+  --json
+```
+
+### Small documents (256–512 bytes)
+
+```bash
+cbc-pillowfight \
+  -U "couchbase://${CB_HOST}/${CB_BUCKET}" \
+  -u "${CB_USER}" \
+  -P "${CB_PASSWORD}" \
+  --num-items 200000 \
+  --num-threads 8 \
+  --min-size 256 \
+  --max-size 512 \
+  --set-pct 50 \
+  --json
+```
+
+### Large documents (10–50 KB)
+
+```bash
+cbc-pillowfight \
+  -U "couchbase://${CB_HOST}/${CB_BUCKET}" \
+  -u "${CB_USER}" \
+  -P "${CB_PASSWORD}" \
+  --num-items 10000 \
+  --num-threads 4 \
+  --min-size 10240 \
+  --max-size 51200 \
+  --set-pct 50 \
+  --json
+```
+
+Typical env values in the Jobs: `CB_HOST=couchbase-cluster`, `CB_BUCKET=performance`, `CB_USER=performance-user`; `CB_PASSWORD` from Secret.
+
+## Running cbc-pillowfight manually (e.g. inside a cluster pod)
+
+From a pod that can reach the Couchbase service (e.g. for quick ad-hoc tests):
+
+```bash
+# Read-heavy
+cbc-pillowfight \
+  -U couchbase://couchbase-cluster/performance \
+  -u performance-user \
+  -P '<password-from-secret>' \
+  --num-items 100000 \
   --num-threads 8 \
   --set-pct 10 \
-  --get-pct 90
+  --min-size 1024 \
+  --max-size 4096 \
+  --json
 
-# Mixed workload
-kubectl exec -it -n couchbase couchbase-cluster-0000 -- \
-  cbc-pillowfight \
-  -U couchbase://localhost/performance \
+# Write-heavy
+cbc-pillowfight \
+  -U couchbase://couchbase-cluster/performance \
   -u performance-user \
-  -P P3rf0rm@nce! \
-  --num-items 1000000 \
+  -P '<password-from-secret>' \
+  --num-items 100000 \
+  --num-threads 8 \
+  --set-pct 90 \
+  --min-size 512 \
+  --max-size 8192 \
+  --json
+
+# Mixed
+cbc-pillowfight \
+  -U couchbase://couchbase-cluster/performance \
+  -u performance-user \
+  -P '<password-from-secret>' \
+  --num-items 100000 \
   --num-threads 8 \
   --set-pct 30 \
-  --get-pct 70
+  --get-pct 70 \
+  --min-size 1024 \
+  --max-size 4096 \
+  --json
 ```
 
-### Using YCSB (Yahoo! Cloud Serving Benchmark)
+## Timings and histograms
+
+**cbc-pillowfight** can report latency distributions via the **`--timings`** option. This dumps a **histogram of command timings** (latencies) so you can see how long operations take and spot tail latencies.
+
+### What you get
+
+- **Histogram**: Bucketed counts of operation latencies (e.g. how many ops fell in 0–1 ms, 1–2 ms, etc.).
+- **When**: Depending on the build, timings can be printed periodically (e.g. every second) and/or **at the end of the run**.
+- **Output**: Printed to the process output (stdout/stderr). In Kubernetes Jobs, this appears in **pod logs**.
+
+### Enabling timings
+
+Add **`--timings`** to the cbc-pillowfight command. You can combine it with **`--json`** (JSON summary and timings histogram both appear in the logs).
+
+**Second `--timings` option (histograms per second):** In some builds, passing **`--timings` twice** enables a **per-second** timing dump: a histogram is printed every second during the run, not only at the end. That lets you watch latency evolution over time (e.g. warm-up, spikes, degradation). Check your cbc-pillowfight version if you rely on per-second output.
+
+Example (read-heavy with timings):
+
+```bash
+cbc-pillowfight \
+  -U "couchbase://${CB_HOST}/${CB_BUCKET}" \
+  -u "${CB_USER}" \
+  -P "${CB_PASSWORD}" \
+  --batch-size 1 \
+  --num-cycles 100000 \
+  --num-items 100000 \
+  --num-threads 1 \
+  --min-size 1024 \
+  --max-size 1024 \
+  --set-pct 10 \
+  --timings \
+  --timings \
+  --json
+```
+
+The **read-heavy** Job in `performance/kubernetes/perftest-read-heavy.yaml` uses `--timings` twice for per-second histograms; other profiles can add one or two `--timings` as needed.
+
+### Viewing timings in Kubernetes
+
+```bash
+kubectl logs job/perftest-read-heavy -n couchbase
+```
+
+Look for the histogram block in the log output (often at the end). It shows latency buckets and counts, so you can derive p50/p95/p99-style metrics or compare runs.
+
+### Live dump (interactive runs)
+
+When running cbc-pillowfight interactively (e.g. in a local container or `kubectl run ... -it`), sending **SIGQUIT** (Ctrl+\ on many terminals) can trigger an immediate dump of timing diagnostics to stderr, without waiting for the run to finish. This is useful for ad-hoc latency inspection during a long test.
+
+## Using YCSB (optional)
+
+YCSB can be used as an alternative workload generator:
 
 ```bash
 # Load data
@@ -96,7 +241,7 @@ kubectl run ycsb-load --rm -it --restart=Never \
   -p couchbase.url=couchbase://couchbase-cluster \
   -p couchbase.bucket=performance \
   -p couchbase.username=performance-user \
-  -p couchbase.password=P3rf0rm@nce! \
+  -p couchbase.password=<password> \
   -p recordcount=1000000
 
 # Run workload
@@ -108,40 +253,44 @@ kubectl run ycsb-run --rm -it --restart=Never \
   -p couchbase.url=couchbase://couchbase-cluster \
   -p couchbase.bucket=performance \
   -p couchbase.username=performance-user \
-  -p couchbase.password=P3rf0rm@nce! \
+  -p couchbase.password=<password> \
   -p operationcount=1000000
 ```
 
-## Performance Monitoring During Tests
+## Performance monitoring during tests
 
-### Watch Metrics in Real-time
+### Watch metrics (cluster CLI)
 
 ```bash
-# Operations per second
+# Operations per second (replace credentials if different)
 watch -n 1 'kubectl exec -n couchbase couchbase-cluster-0000 -- \
   couchbase-cli bucket-stats -c localhost \
-  -u Administrator -p P@ssw0rd123! \
+  -u Administrator -p <admin-password> \
   --bucket performance | grep ops'
 
-# Memory usage
+# Server info
 watch -n 5 'kubectl exec -n couchbase couchbase-cluster-0000 -- \
   couchbase-cli server-info -c localhost \
-  -u Administrator -p P@ssw0rd123!'
+  -u Administrator -p <admin-password>'
 ```
 
-### Query Prometheus
+### Prometheus
+
+If Prometheus is installed (e.g. OpenShift user-workload monitoring):
 
 ```bash
-# Get operations rate
+# Example: query operations rate
 kubectl exec -n openshift-user-workload-monitoring prometheus-user-workload-0 -- \
   promtool query instant \
   'http://localhost:9090' \
   'rate(couchbase_bucket_ops_total[5m])'
 ```
 
-## Benchmark Results Format
+Grafana dashboards can be wired to the same Prometheus metrics (see `argocd/manifests/grafana/`).
 
-Results should be saved in JSON format:
+## Benchmark results format
+
+Capture JSON output from cbc-pillowfight (Jobs use `--json`). For latency distribution details, use **`--timings`** as well (see [Timings and histograms](#timings-and-histograms)). Results can be stored in a consistent shape for comparison:
 
 ```json
 {
@@ -171,36 +320,31 @@ Results should be saved in JSON format:
 }
 ```
 
-## Best Practices
+## Best practices
 
-1. **Warm-up Period**: Always include a warm-up period before measuring
-2. **Multiple Runs**: Run tests multiple times and average results
-3. **Isolate Tests**: Run performance tests in isolated environments
-4. **Document Configuration**: Record all cluster and test configurations
-5. **Monitor Resources**: Always monitor CPU, memory, disk, and network during tests
-6. **Compare Baseline**: Establish and compare against baseline performance
+1. **Warm-up**: Allow a short warm-up before measuring (e.g. run a lighter load first).
+2. **Multiple runs**: Run each profile several times and average or compare results.
+3. **Isolate tests**: Run performance tests in a dedicated namespace or cluster when possible.
+4. **Document configuration**: Record cluster size, bucket settings, and Job parameters for each run.
+5. **Monitor resources**: Watch CPU, memory, disk, and network during tests (Prometheus/Grafana or CLI).
+6. **Baseline**: Establish a baseline and compare subsequent runs against it.
 
-## Example Performance Test Workflow
+## Example workflow
 
 ```bash
-# 1. Deploy fresh cluster
-./deploy.sh
+# 1. Ensure Couchbase cluster and performance bucket are ready
+kubectl get couchbasecluster -n couchbase
+kubectl get secret performance-user-password -n couchbase
 
-# 2. Wait for cluster to be ready
-./verify.sh
+# 2. Run a benchmark (e.g. mixed)
+kubectl apply -f performance/kubernetes/perftest-mixed.yaml -n couchbase
 
-# 3. Pre-populate data
-./tools/prepopulate.sh --documents 10000000
+# 3. Follow logs
+kubectl logs job/perftest-mixed -n couchbase -f
 
-# 4. Run warm-up
-./tools/warmup.sh --duration 300
+# 4. (Optional) Run other profiles or collect Prometheus/Grafana metrics during/after the run
 
-# 5. Run benchmark
-./tools/benchmark.sh --profile mixed --duration 1800
-
-# 6. Collect results
-./tools/collect-metrics.sh --output results/test-$(date +%Y%m%d-%H%M%S).json
-
-# 7. Generate report
-./tools/generate-report.sh --input results/test-*.json
+# 5. To re-run the same profile, delete the Job then apply again
+kubectl delete job perftest-mixed -n couchbase
+kubectl apply -f performance/kubernetes/perftest-mixed.yaml -n couchbase
 ```
