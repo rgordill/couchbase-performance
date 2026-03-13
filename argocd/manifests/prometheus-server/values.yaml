@@ -100,11 +100,11 @@ server:
   # Resources (align with previous manifests)
   resources:
     requests:
-      cpu: 100m
-      memory: 1Gi
-    limits:
-      cpu: 500m
-      memory: 4Gi
+      cpu: 200m
+      memory: 2Gi
+    # limits:
+    #   cpu: 2Gim
+    #   memory: 4Gi
 
   # Service: chart default servicePort 80 is fine (maps to container 9090)
   service:
