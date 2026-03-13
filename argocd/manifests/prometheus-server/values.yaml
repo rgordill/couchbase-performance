@@ -54,6 +54,11 @@ scrapeConfigs:
 server:
   fullnameOverride: prometheus-server
 
+  # Retention aligned with OpenShift user-workload Prometheus (7d) to reduce memory vs chart default (15d).
+  # retentionSize caps storage so TSDB/WAL don't grow unbounded from remote write.
+  retention: "2d"
+  retentionSize: "1GB"
+
   # Remote write receiver only (no scrape, no lifecycle/reload API)
   extraArgs:
     web.enable-remote-write-receiver: ""
