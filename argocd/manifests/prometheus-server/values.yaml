@@ -1,10 +1,14 @@
 # Values for prometheus-community Helm chart (https://github.com/prometheus-community/helm-charts/tree/main/charts/prometheus).
-# Matches previous bare-manifest setup: remote write receiver, StatefulSet, 10Gi PVC, Ingress with TLS + basic auth.
+# Remote-write-only: no scraping; clients POST to /api/v1/write. StatefulSet, 10Gi PVC, Ingress with TLS + basic auth.
 # Ingress host is overridden at deploy time via ApplicationSet helm parameters (prometheus-server.<ingress-domain>).
 
-# configmap-reload sidecar: no fixed UID so OpenShift can assign (restricted-v2 SCC)
+# configmap-reload sidecar: disabled to avoid connection errors. The reloader starts before
+# Prometheus is ready (WAL replay takes ~1+ min) and retries to 127.0.0.1:9090/-/reload every few
+# seconds, flooding logs with "connection refused". Config changes are applied when the ConfigMap
+# is updated and the pod is recreated (e.g. Argo CD sync / rollout).
 configmapReload:
   prometheus:
+    enabled: false
     containerSecurityContext: {}
 
 # Subcharts: we only need the Prometheus server
@@ -20,8 +24,7 @@ prometheus-pushgateway:
 # Release-wide
 forceNamespace: couchbase
 
-# Scrape configs must be at root level to override chart defaults (chart uses root scrapeConfigs, not server.scrapeConfigs).
-# Otherwise kubernetes-pods and other jobs stay enabled and can hit non-Prometheus endpoints (e.g. application/json → ERROR).
+# Remote-write + self-scrape only. All other jobs disabled; config must be at root to override chart defaults.
 scrapeConfigs:
   prometheus:
     enabled: true
@@ -51,12 +54,9 @@ scrapeConfigs:
 server:
   fullnameOverride: prometheus-server
 
-  # Remote write receiver (same as --web.enable-remote-write-receiver)
+  # Remote write receiver only (no scrape, no lifecycle/reload API)
   extraArgs:
     web.enable-remote-write-receiver: ""
-
-  extraFlags:
-    - web.enable-lifecycle
 
   # StatefulSet + 10Gi PVC
   statefulSet:
