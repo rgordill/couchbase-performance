@@ -54,14 +54,19 @@ scrapeConfigs:
 server:
   fullnameOverride: prometheus-server
 
-  # Retention aligned with OpenShift user-workload Prometheus (7d) to reduce memory vs chart default (15d).
-  # retentionSize caps storage so TSDB/WAL don't grow unbounded from remote write.
+  # Retention aligned with OpenShift user-workload; short retention reduces TSDB/WAL and memory.
   retention: "2d"
   retentionSize: "1GB"
 
-  # Remote write receiver only (no scrape, no lifecycle/reload API)
+  # Cap Go heap so process stays under container memory limit (avoids OOMKilled). Use ~75% of limit.
+  env:
+    - name: GOMEMLIMIT
+      value: "1536MiB"
+
+  # Remote write receiver; delayed-compaction (align with UWM) spreads compaction to reduce memory spikes.
   extraArgs:
     web.enable-remote-write-receiver: ""
+    enable-feature: "delayed-compaction"
 
   # StatefulSet + 10Gi PVC
   statefulSet:
@@ -103,14 +108,14 @@ server:
       nginx.ingress.kubernetes.io/auth-secret: prometheus-basic-auth
       nginx.ingress.kubernetes.io/auth-realm: "Prometheus - authentication required"
 
-  # Resources (align with previous manifests)
+  # Resources aligned with user-workload (2Gi); GOMEMLIMIT keeps heap under limit to avoid OOMKilled.
   resources:
     requests:
       cpu: 200m
       memory: 2Gi
     limits:
-      cpu: '2'
-      memory: 4Gi
+      cpu: "2"
+      memory: 2Gi
 
   # Service: chart default servicePort 80 is fine (maps to container 9090)
   service:
