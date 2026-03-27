@@ -1,8 +1,8 @@
 # OpenShift values for Couchbase Helm chart
 # See: https://docs.couchbase.com/operator/current/helm-setup-guide.html
 #
-# Install operator + admission controller in couchbase-operator namespace; they use ClusterRole
-# scope to manage all couchbase-* namespaces. CouchbaseCluster resources live in cluster overlays.
+# Install operator + admission controller in the Argo CD Application destination namespace (couchbase).
+# scope: Role — reconcile Couchbase CRs only in that namespace (not cluster-wide). CouchbaseCluster lives in the same overlay path.
 
 install:
   couchbaseOperator: true
@@ -11,14 +11,14 @@ install:
   syncGateway: false
 
 couchbaseOperator:
-  scope: ClusterRole  # Manage CouchbaseCluster and related resources in all namespaces (couchbase-*)
+  scope: Role  # Namespace-scoped: watch and manage CRs only in the install namespace
   image:
     repository: registry.connect.redhat.com/couchbase/operator
     tag: "2.9.0"
 
 admissionController:
   disableValidatingWebhook: true
-  scope: ClusterRole  # Validate Couchbase resources in all namespaces
+  scope: Role  # Match operator: admission RBAC limited to install namespace (webhook disabled here)
   image:
     repository: registry.connect.redhat.com/couchbase/admission-controller
     tag: "2.9.0"

@@ -1,7 +1,7 @@
 ---
 # Couchbase operator via Helm (https://docs.couchbase.com/operator/current/helm-setup-guide.html)
-# Chart: couchbase-operator; values from values.yaml. Deployed in couchbase-operator namespace;
-# operator and admission controller use ClusterRole scope to manage all couchbase-* namespaces.
+# Chart: couchbase-operator; values from values.yaml. Deployed in destination namespace (couchbase);
+# Operator and admission controller use Role scope: Couchbase CRs are reconciled only in spec.destination.namespace.
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
@@ -62,10 +62,10 @@ spec:
       jqPathExpressions:
         - '.status'
         - '.metadata.annotations'
-    # Admission controller TLS secret is generated/injected by the cluster
+    # Admission TLS secret: operator rotates certs in-cluster; .data and checksum drift otherwise
     - group: ""
       kind: Secret
-      namespace: couchbase-operator
+      namespace: couchbase
       namePattern: ".*(admission|webhook).*"
       jqPathExpressions:
         - '.data'
@@ -74,9 +74,10 @@ spec:
       kind: Service
       jqPathExpressions:
         - '.spec.clusterIP'
-    # Deployment revision and rollout annotations are managed by the controller
+    # Deployment: revision/rollout annotations; checksum/config updates when admission TLS secret rotates
     - group: apps
       kind: Deployment
       jqPathExpressions:
         - '.metadata.annotations["deployment.kubernetes.io/revision"]'
         - '.metadata.annotations["kubectl.kubernetes.io/restartedAt"]'
+        - '.spec.template.metadata.annotations["checksum/config"]'

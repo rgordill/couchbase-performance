@@ -26,6 +26,7 @@ spec:
           command: ["/bin/sh", "-c"]
           args:
             - |
+              echo "Test started" $(date), uptime: $(cut -d' ' -f1 /proc/uptime) 
               cbc-pillowfight \
                 -U "couchbase://$(CB_HOST)/$(CB_BUCKET)" \
                 -u "$(CB_USER)" \

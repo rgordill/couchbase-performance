@@ -1,0 +1,4 @@
+requests>=2.31.0
+python-snappy>=0.7.0
+protobuf>=4.25.0
+prometheus-remote-writer>=0.1.0
