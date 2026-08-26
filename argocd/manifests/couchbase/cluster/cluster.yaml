@@ -13,7 +13,7 @@ kind: CouchbaseCluster
 metadata:
   name: couchbase-cluster
 spec:
-  image: registry.connect.redhat.com/couchbase/server:8.0.1
+  image: registry.connect.redhat.com/couchbase/server:8.0.2
   antiAffinity: true
   
   security:
